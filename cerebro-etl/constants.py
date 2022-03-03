@@ -1,0 +1,2 @@
+DOWNLOAD_FROM_SERVER = 'server'
+DOWNLOAD_FROM_URL = 'url'
