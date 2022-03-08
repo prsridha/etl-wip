@@ -1,7 +1,9 @@
 import json
 import spacy
+import numpy as np
 import pandas as pd
 import dask.dataframe as dd
+from PIL import Image
 from dask.distributed import Client
 from cerebro.dask_backend import DaskBackend
 from cerebro.dataset_info import DatasetInfo
@@ -40,8 +42,10 @@ def prepare_data():
     dataset = pd.DataFrame(dataset)
     dataset.to_csv("/mydata/coco/annotations/captions_val2014_modified.csv", index=False)
 
-def row_preprocessing_routine(row):
-    to_path = str(row.file_name)
+def row_preprocessing_routine(row, kwargs):
+    #TODO: how to pass parameters to this
+    to_root_path = "/mydata/coco/val2014/"
+    to_path = to_root_path + str(row.file_name)
     h, w = int(row.height), int(row.width)
 
     im = Image.open(to_path)
@@ -49,15 +53,31 @@ def row_preprocessing_routine(row):
     resized_np = np.array(resized)
     row["image"] = resized_np
 
+    nlp = kwargs['nlp']
     doc = nlp(str(' '.join(row.captions)))
     row["captions"] = doc.vector
 
     return row
 
+def file_name_processing_routine(file_name, kwargs):
+    to_root_path = "/mydata/coco/val2014/"
+    to_path = to_root_path + str(file_name)
+    im = Image.open(to_path)
+    resized = im.resize((56, 56))
+    resized_np = np.array(resized)
+    return resized_np 
+
+def caption_processing_routine(captions, kwargs):
+    nlp = kwargs["nlp"]
+    doc = nlp(str(' '.join(captions)))
+    return doc.vector
+
 def main():
+    # dsk_bknd = DaskBackend("0.0.0.0:8786")
+
     # prepare_data()
     is_feature_download = [False, True, False, False, False, False]
-    feature_names = ["id", "file_name", "height", "width", "caption", "date_captured"]
+    feature_names = ["id", "file_name", "height", "width", "captions", "date_captured"]
     dtypes = (int, str, int, int, list, str)
     data_info = DatasetInfo(feature_names, feature_names, [], dtypes, is_feature_download)
 
@@ -66,24 +86,27 @@ def main():
     to_root_path = "/mydata/coco/val2014/"
     output_path = ""
     requirements_path = ""
-    download_type = [constants.No_DOWNLOAD, constants.DOWNLOAD_FROM_SERVER, constants.No_DOWNLOAD, constants.No_DOWNLOAD, constants.No_DOWNLOAD, constants.No_DOWNLOAD]
+    download_type = constants.DOWNLOAD_FROM_SERVER
     username = "prsridha"
     host = "128.110.217.26"
     pem_path = "/users/prsridha/cloudlab.pem"
 
-    dsk_bknd = DaskBackend("0.0.0.0:8786")
     params = Params(metadata_path, from_root_path, to_root_path,
         output_path, requirements_path, username, host, pem_path,
         download_type)
     
-    nlp = spacy.load("en_core_web_sm")
-    e = etl(dsk_bknd, params, row_preprocessing_routine, data_info)
+    #TODO: how to pass parameters to these routines?
+    column_routines = [None, file_name_processing_routine, None, None, caption_processing_routine, None]
+    e = etl(None, params, column_routines, data_info)
 
-    e.load_data(frac=0.01)
+    nlp = spacy.load("en_core_web_sm")
+
+    e.load_data(frac=0.001)
     e.shuffle_shard_data()
     print(e.sharded_df.head())
-    e.preprocess_data()
+    e.preprocess_data(nlp=nlp)
     print(e.processed_df.head())
+    print(len(e.processed_df))
 
 def testing():
     prepare_data()
