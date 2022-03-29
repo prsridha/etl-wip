@@ -1,16 +1,20 @@
 # Run the following on the scheduler
 # first copy cloudlab.pem to the scheduler
-#chmod 400 cloudlab.pem
-#ssh-keygen -p -N "" -f ./cloudlab.pem
+chmod 400 cloudlab.pem
+ssh-keygen -p -N "" -f ./cloudlab.pem
 # enter the passphrase
 
 # Install pip and dask
 sudo apt update
-sudo apt install python3-pip
+sudo apt install -y python3-pip
 pip install "dask[complete]"
 pip install jupyter-server-proxy
 pip install notebook
+pip install spacy
+# dask-scheduler breaks without this
+pip install click==6.6
 
+sudo chmod 777 -R /mydata/
 #
 echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc
 source ~/.bashrc
@@ -22,4 +26,14 @@ source ~/.bashrc
 sudo apt update
 sudo apt install -y python3-pip
 pip install fabric
+pip install spacy
+# dask-scheduler breaks without this
+pip install click==6.6
 #chmod 400 cloudlab.pem
+sudo chmod 777 -R /mydata/
+
+cat >> ~/.inputrc <<'EOF'
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+EOF
+bind -f  ~/.inputrc

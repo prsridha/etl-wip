@@ -6,13 +6,12 @@ import dask.dataframe as dd
 from dask.distributed import Client
 
 class etl:
-    def __init__(self, backend, params, column_routines, dataset_info):
+    def __init__(self, backend, params, row_preprocessing_routine, dataset_info):
         self.metadata_df = None
         self.backend = backend
         self.params = params
         self.dataset_info = dataset_info
-        # self.row_routine = row_preprocessing_routine
-        self.column_routines = column_routines
+        self.row_routine = row_preprocessing_routine
         self.params.create_connection()
 
     def load_data(self, frac=1):
@@ -44,32 +43,19 @@ class etl:
             # error
             pass
     
-    def process_row(self, row):
+    def process_row(self, row, kwargs):
         for i in range(len(self.dataset_info.features)):
             feature_name = self.dataset_info.features[i]
             if self.dataset_info.is_feature_download[i]:
                 self.download_file(row[feature_name])
-        return self.row_routine(row)
-    
-    def process_column(self, element, idx, kwargs):
-        print("GOT IDX", idx)
-        if self.dataset_info.is_feature_download[idx]:
-            self.download_file(element)
-        if self.column_routines[idx]:
-            return self.column_routines[idx](element, kwargs)
-        else:
-            return
+        return self.row_routine(row, kwargs)
 
     def preprocess_data(self, **kwargs):
-        self.processed_df = self.sharded_df
-        for idx, feature in enumerate(self.dataset_info.features):
-            if self.column_routines[idx]:
-                processed_column_df = self.sharded_df[feature].map_partitions(
-                    lambda part: part.apply(self.process_column, args=(idx, kwargs)),
-                    meta=('processed_column_df', object) 
-                )
-                self.processed_df[feature] = processed_column_df
-                self.processed_df.compute()
+        tensor = self.sharded_df.map_partitions(
+            lambda part: part.apply(self.process_row, args=(kwargs,), axis=1),
+            meta=('tensor', object)
+        )
+        return tensor
 
     def clean_up(self):
         # broadcast fabric connection close to each worker.
