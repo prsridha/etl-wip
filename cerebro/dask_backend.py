@@ -7,5 +7,12 @@ class DaskBackend():
         # get the dask dashboard link
         print("Client dashboard: ", self.client.dashboard_link)
         # get the number of workers
-        self.num_workers = len(self.client.scheduler_info()['workers'])
+        if num_workers == None:
+            self.num_workers = len(self.client.scheduler_info()['workers'])
+        else:
+            self.num_workers = num_workers
         print("Number of workers:", self.num_workers)
+    
+    def show_results(self, res):
+        print(self.client)
+        print(self.client.compute(res))

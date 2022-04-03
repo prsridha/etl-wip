@@ -10,6 +10,9 @@ from cerebro.dataset_info import DatasetInfo
 from cerebro.params import Params
 from cerebro.etl import etl
 import cerebro.constants as constants
+from sentence_transformers import SentenceTransformer, util
+
+
 
 def prepare_data():
     data = None
@@ -42,22 +45,22 @@ def prepare_data():
     dataset = pd.DataFrame(dataset)
     dataset.to_csv("/mydata/coco/annotations/captions_val2014_modified.csv", index=False)
 
-def row_preprocessing_routine(row, kwargs):
-    feature_names = ["id", "file_name", "height", "width", "caption", "date_captured"]
-    to_root_path = "/mydata/coco/val2014/"
-    to_path = to_root_path + str(row.file_name)
-    h, w = int(row.height), int(row.width)
+# def row_preprocessing_routine(row, kwargs):
+#     feature_names = ["id", "file_name", "height", "width", "caption", "date_captured"]
+#     to_root_path = "/mydata/coco/val2014/"
+#     to_path = to_root_path + str(row.file_name)
+#     h, w = int(row.height), int(row.width)
 
-    im = Image.open(to_path)
-    resized = im.resize((h//2,w//2))
-    resized_np = np.array(resized)
-    torch_tensor = torch.tensor(resized_np)
+#     im = Image.open(to_path)
+#     resized = im.resize((h//2,w//2))
+#     resized_np = np.array(resized)
+#     torch_tensor = torch.tensor(resized_np)
 
-    # nlp = kwargs['nlp']
-    # doc = nlp(str(' '.join(row.captions)))
-    # row["captions"] = doc.vector
+#     # nlp = kwargs['nlp']
+#     # doc = nlp(str(' '.join(row.captions)))
+#     # row["captions"] = doc.vector
 
-    return torch_tensor
+#     return torch_tensor
 
 # def file_name_processing_routine(file_name, kwargs):
 #     to_root_path = "/mydata/coco/val2014/"
@@ -72,8 +75,18 @@ def row_preprocessing_routine(row, kwargs):
 #     doc = nlp(str(' '.join(captions)))
 #     return doc.vector
 
+def row_preprocessing_routine(row, to_root_path, kwargs):
+    from torchvision import transforms
+    input_image_path = to_root_path + str(row["file_name"])
+    output_caption = row["captions"]
+    img = Image.open(input_image_path)
+    img_tensor = transforms.PILToTensor()(img)
+    enc_model = kwargs['nlp_model']
+    caption_tensor = enc_model.encode([output_caption], convert_to_tensor=True)
+    return [img_tensor, caption_tensor]
+
 def main():
-    # dsk_bknd = DaskBackend("0.0.0.0:8786")
+    dsk_bknd = DaskBackend("0.0.0.0:8786")
 
     prepare_data()
     is_feature_download = [False, True, False, False, False, False]
@@ -91,6 +104,8 @@ def main():
     host = "128.110.218.13"
     pem_path = "/users/vik1497/cloudlab.pem"
 
+    nlp_model = SentenceTransformer('all-MiniLM-L6-v2')
+
     params = Params(metadata_path, from_root_path, to_root_path,
         output_path, requirements_path, username, host, pem_path,
         download_type)
@@ -98,14 +113,14 @@ def main():
     #TODO: how to pass parameters to these routines?
     # column_routines = [None, file_name_processing_routine, None, None, caption_processing_routine, None]
     
-    e = etl(None, params, row_preprocessing_routine, data_info)
+    e = etl(dsk_bknd, params, row_preprocessing_routine, data_info)
 
     e.load_data(frac=0.01)
     e.shuffle_shard_data()
     e.sharded_df.compute()
     print(len(e.sharded_df))
-    result = e.preprocess_data()
-    print(result.compute())
+    result = e.preprocess_data(nlp_model=nlp_model)
+    # dsk_bknd.show_results(result)
 
 def testing():
     prepare_data()
@@ -113,5 +128,5 @@ def testing():
     df.head()
 
 if __name__ == '__main__':
-    client = Client("0.0.0.0:8786")
+    # client = Client("0.0.0.0:8786")
     main()
