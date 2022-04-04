@@ -80,7 +80,7 @@ def main():
     
     e = etl(dsk_bknd, params, row_preprocessing_routine, data_info)
 
-    e.load_data(frac=0.01)
+    e.load_data(frac=0.1)
     e.shuffle_shard_data()
     e.sharded_df.compute()
     print(len(e.sharded_df))

@@ -1,13 +1,28 @@
 import sys
 import pip
-from fabric2 import SerialGroup
-from invoke import run as local
+
+def import_or_install(package):
+    try:
+        __import__(package)
+    except ImportError:
+        pip.main(['install', package]) 
+
+import_or_install("fabric2")
+from fabric2 import SerialGroup, Connection
 
 workers = [
-    "128.110.218.38",
-    "128.110.218.32",
-    "128.110.218.17"
+    "128.110.219.138",
+    "128.110.219.125",
+    "128.110.219.131"
 ]
+
+user = "vik1497"
+host = "128.110.219.134"
+pem_path = "/users/vik1497/cloudlab.pem"
+connect_kwargs = {"key_filename":pem_path}
+conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+s = SerialGroup(*workers, user=user, connect_kwargs=connect_kwargs)
+
 
 # need to have password sans cloudlab.pem copied to scheduler
 
@@ -18,7 +33,7 @@ def copy_pem():
 
 def copy_module():
     print("Zipping cerebro")
-    local("zip /users/vik1497/etl-wip/cerebro.zip /users/vik1497/etl-wip/cerebro/*")
+    conn.run("zip /users/vik1497/etl-wip/cerebro.zip /users/vik1497/etl-wip/cerebro/*")
     s.run("mkdir -p /users/vik1497/etl-wip/etl-wip")
     s.put("/users/vik1497/etl-wip/cerebro.zip", "/users/vik1497/etl-wip/cerebro.zip")
     s.put("/users/vik1497/etl-wip/requirements.txt", "/users/vik1497/etl-wip/requirements.txt")
@@ -28,35 +43,66 @@ def copy_module():
 
 def run(cmd):
     result = s.run(cmd)
-    print(rcesult)
+    print(result)
 
 def install_dependencies():
     print("Installing dependencies...")
-    run("sudo apt update")
-    run("sudo apt install -y python3-pip")
-    run("pip install -r requirements.txt")
+
+    conn.sudo("sudo apt update")
+    conn.sudo("sudo apt install -y python3-pip")
+    conn.run("pip install -r /users/vik1497/etl-wip/requirements.txt")
 
     print("chmod /mydata/")
-    run("sudo chmod 777 -R /mydata/")
+    conn.sudo("sudo chmod 777 -R /mydata/")
 
-    print "Adding bin dir to path"
-    run('echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc')
-    run("source ~/.bashrc")
+    print("Adding bin dir to path")
+    conn.run('echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc')
+    conn.run("source ~/.bashrc")
 
     print("Installing more dependencies")
-    run("pip install click==6.6")
+    conn.run("pip install click==7.1.1")
+
+    print("Installing dependencies on workers...")
+    s.sudo("sudo apt update")
+    s.sudo("sudo apt install -y python3-pip")
+    run("pip install -r /users/vik1497/etl-wip/requirements.txt")
+
+    print("chmod /mydata/")
+    s.sudo("sudo chmod 777 -R /mydata/")
+
+    print("Adding bin dir to path")
+    run('echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc')
+    run("source ~/.bashrc")
+ 
+    print("Installing more dependencies")
+    run("pip install click==7.1.1")
+
+def delete_coco():
+    print("Deleting /mydata/coco")
+    s.run("rm -rf /mydata/coco/*")
+
+def testing():
+    conn.run("ls -a")
 
 def main():
     args = sys.argv
+
+    # print("GOT: ", args[1] + " " + args[2])
+    # print(args[0])
     
-    if args[0] + " " + args[1] == "copy pem":
+    if args[1] == "install":
+        install_dependencies()
+    elif args[1] == "testing":
+        testing() 
+    elif args[1] + " " + args[2] == "copy pem":
         out = copy_pem(s)
         print(out)
-    elif args[0] + " " + args[1] == "copy module":
+    elif args[1] + " " + args[2] == "copy module":
         copy_module()
-    elif args[0] == "install":
-        install_dependencies()
+    elif args[1] + " " + args[2] == "delete coco":
+        delete_coco()
 
+main()
 
 # OTHER COMMANDS
 # cat >> ~/.inputrc <<'EOF'
