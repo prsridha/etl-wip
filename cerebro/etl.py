@@ -16,19 +16,12 @@ class etl:
 
     def load_data(self, frac=1):
         pandas_df = pd.read_csv(self.params.metadata_path)
-        _df = dd.from_pandas(pandas_df, npartitions=self.backend.num_workers) #self.backend.num_workers)
+        _df = dd.from_pandas(pandas_df, npartitions=self.backend.num_workers)
         self.metadata_df = _df.sample(frac=frac)
 
     def shuffle_shard_data(self):
         shuffled_df = self.metadata_df.sample(frac=1)
-        self.sharded_df = shuffled_df.repartition(npartitions=self.backend.num_workers) #self.backend.num_workers)
-
-    def process_row(self, row, kwargs):
-        for i in range(len(self.dataset_info.features)):
-            feature_name = self.dataset_info.features[i]
-            if self.dataset_info.is_feature_download[i]:
-                self.download_file(row[feature_name])
-        return self.row_routine(row, kwargs)
+        self.sharded_df = shuffled_df.repartition(npartitions=self.backend.num_workers)
 
     def preprocess_data(self, **kwargs):
 
@@ -63,12 +56,11 @@ class etl:
         data_info = self.dataset_info
         params = self.params
         row_routine = self.row_routine
-        feats = self.dataset_info.features
         transformed_data = self.sharded_df.map_partitions(
             lambda part: part.apply(process_row, args=(data_info, params, row_routine, kwargs,), axis=1),
             meta=('transformed_data', object)
         )
-        print(transformed_data.compute())
+        # print(transformed_data.compute())
         return transformed_data
 
     def clean_up(self):

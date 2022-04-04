@@ -12,8 +12,6 @@ from cerebro.etl import etl
 import cerebro.constants as constants
 from sentence_transformers import SentenceTransformer, util
 
-
-
 def prepare_data():
     data = None
     with open("/mydata/coco/annotations/captions_val2014.json") as f:
@@ -44,36 +42,6 @@ def prepare_data():
 
     dataset = pd.DataFrame(dataset)
     dataset.to_csv("/mydata/coco/annotations/captions_val2014_modified.csv", index=False)
-
-# def row_preprocessing_routine(row, kwargs):
-#     feature_names = ["id", "file_name", "height", "width", "caption", "date_captured"]
-#     to_root_path = "/mydata/coco/val2014/"
-#     to_path = to_root_path + str(row.file_name)
-#     h, w = int(row.height), int(row.width)
-
-#     im = Image.open(to_path)
-#     resized = im.resize((h//2,w//2))
-#     resized_np = np.array(resized)
-#     torch_tensor = torch.tensor(resized_np)
-
-#     # nlp = kwargs['nlp']
-#     # doc = nlp(str(' '.join(row.captions)))
-#     # row["captions"] = doc.vector
-
-#     return torch_tensor
-
-# def file_name_processing_routine(file_name, kwargs):
-#     to_root_path = "/mydata/coco/val2014/"
-#     to_path = to_root_path + str(file_name)
-#     im = Image.open(to_path)
-#     resized = im.resize((56, 56))
-#     resized_np = np.array(resized)
-#     return resized_np 
-
-# def caption_processing_routine(captions, kwargs):
-#     nlp = kwargs["nlp"]
-#     doc = nlp(str(' '.join(captions)))
-#     return doc.vector
 
 def row_preprocessing_routine(row, to_root_path, kwargs):
     from torchvision import transforms
@@ -110,9 +78,6 @@ def main():
         output_path, requirements_path, username, host, pem_path,
         download_type)
     
-    #TODO: how to pass parameters to these routines?
-    # column_routines = [None, file_name_processing_routine, None, None, caption_processing_routine, None]
-    
     e = etl(dsk_bknd, params, row_preprocessing_routine, data_info)
 
     e.load_data(frac=0.01)
@@ -120,7 +85,7 @@ def main():
     e.sharded_df.compute()
     print(len(e.sharded_df))
     result = e.preprocess_data(nlp_model=nlp_model)
-    # dsk_bknd.show_results(result)
+    print(result.compute())
 
 def testing():
     prepare_data()
@@ -128,5 +93,4 @@ def testing():
     df.head()
 
 if __name__ == '__main__':
-    # client = Client("0.0.0.0:8786")
     main()

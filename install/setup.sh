@@ -4,7 +4,7 @@ dask-scheduler --host=0.0.0.0
 jupyter notebook
 
 # workers
-dask-worker tcp://128.110.218.13:8786 &
+dask-worker tcp://128.110.218.13:8786
 
 # local
 ssh -N -f -L localhost:8787:localhost:8787 -p 22 prsridha@ms0801.utah.cloudlab.us
@@ -26,3 +26,13 @@ unzip cerebro.zip
 python3 setup.py install --user
 
 rm -rf /mydata/coco/
+
+
+
+ssh -p 22 vik1497@ms1319.utah.cloudlab.us
+ssh -p 22 vik1497@ms1344.utah.cloudlab.us
+ssh -p 22 vik1497@ms1338.utah.cloudlab.us
+ssh -p 22 vik1497@ms1323.utah.cloudlab.us
+
+/bin/bash   
+clear
