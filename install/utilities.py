@@ -1,4 +1,3 @@
-from fabric2 import SerialGroup, Connection
 import sys
 import subprocess
 
@@ -11,8 +10,8 @@ def import_or_install(package):
         import pip
         pip.main(['install', package])
 
-
 import_or_install("fabric2")
+from fabric2 import SerialGroup, Connection
 
 workers = [
     "128.110.219.138",
