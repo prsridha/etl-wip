@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 from pathlib import Path
 import cerebro.constants as constants
@@ -13,6 +14,8 @@ class etl:
         self.dataset_info = dataset_info
         self.row_routine = row_preprocessing_routine
         self.params.create_connection()
+        self.io_time = 0
+        self.cpu_time = 0
 
     def load_data(self, frac=1):
         pandas_df = pd.read_csv(self.params.metadata_path)
@@ -22,6 +25,10 @@ class etl:
     def shuffle_shard_data(self):
         shuffled_df = self.metadata_df.sample(frac=1)
         self.sharded_df = shuffled_df.repartition(npartitions=self.backend.num_workers)
+
+    def compute_metrics(tensor):
+        with open("output.txt", "w") as f:
+            f.write(tensor)
 
     def preprocess_data(self, **kwargs):
 
@@ -47,10 +54,13 @@ class etl:
                 pass
                 
         def process_row(row, dataset_info, params, row_routine, kwargs):
+            t1 = time.time()
             for i in range(len(dataset_info.features)):
                 feature_name = dataset_info.features[i]
                 if dataset_info.is_feature_download[i]:
                     download_file(row[feature_name], params)
+            t2 = time.time()
+            kwargs["io_time"] = t2-t1
             return row_routine(row, params.to_root_path, kwargs)
 
         data_info = self.dataset_info

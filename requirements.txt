@@ -6,3 +6,4 @@ fabric
 spacy
 Pillow
 sentence_transformers
+matplotlib
