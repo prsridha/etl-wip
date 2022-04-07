@@ -1,5 +1,4 @@
 import subprocess
-from distributed.utils import get_ip
 from argparse import ArgumentParser
 
 # need to have password sans cloudlab.pem copied to scheduler
@@ -19,6 +18,7 @@ def init(w):
     global s
 
     import_or_install("fabric2")
+    import_or_install("dask[complete]")
     from fabric2 import SerialGroup, Connection
 
     workers = ["node"+str(i) for i in range(w)]
@@ -115,6 +115,7 @@ def testing():
 
 
 def setup_dask():
+    from distributed.utils import get_ip
     cmd1 = 'nohup bash -c "/users/vik1497/.local/bin/dask-scheduler --host=0.0.0.0"'
     cmd2 = 'nohup bash -c "/users/vik1497/.local/bin/dask-worker tcp://{}:8786"'
     runbg(conn, cmd1)
