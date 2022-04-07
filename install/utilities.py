@@ -2,7 +2,7 @@ import subprocess
 from argparse import ArgumentParser
 
 # need to have password sans cloudlab.pem copied to scheduler
-
+# sudo ssh-keygen -p -N "" -f ./cloudlab.pem
 
 def import_or_install(package):
     try:
@@ -16,7 +16,7 @@ def init(w):
     global conn
     global s
 
-    subprocess.run(["apt", "install", "-y", "python3-pip"])
+    subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
     
     import_or_install("fabric2")
     import_or_install("dask[complete]")
