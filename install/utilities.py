@@ -16,6 +16,7 @@ def init(w):
     global conn
     global s
 
+    subprocess.call(["sudo", "apt", "update"])
     subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
     
     import_or_install("fabric2")
