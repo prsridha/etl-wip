@@ -34,6 +34,7 @@ def init(w):
     conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
     s = SerialGroup(*workers, user=user, connect_kwargs=connect_kwargs)
 
+    s.run("rm -rf /users/vik1497/etl-wip")
     s.run("git clone https://github.com/prsridha/etl-wip.git")
 # copy cloudlab.pem to workers
 
