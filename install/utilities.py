@@ -8,7 +8,6 @@ def import_or_install(package):
     try:
         __import__(package)
     except ImportError:
-        subprocess.run(["apt", "install", "-y", "python3-pip"])
         import pip
         pip.main(['install', package])
 
@@ -17,6 +16,8 @@ def init(w):
     global conn
     global s
 
+    subprocess.run(["apt", "install", "-y", "python3-pip"])
+    
     import_or_install("fabric2")
     import_or_install("dask[complete]")
     from fabric2 import SerialGroup, Connection
