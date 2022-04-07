@@ -21,6 +21,7 @@ def init(w):
     
     import_or_install("fabric2")
     import_or_install("dask[complete]")
+    subprocess.call(["bash", "/users/vik1497/etl-wip/install/path.sh"])
     from fabric2 import SerialGroup, Connection
 
     workers = ["node"+str(i) for i in range(w)]
@@ -79,7 +80,7 @@ def install_dependencies():
     conn.sudo("sudo apt install dtach")
 
     print("Adding bin dir to path")
-    conn.run("bash /users/vik1497/etl-wip/install/path.sh")
+    # conn.run("bash /users/vik1497/etl-wip/install/path.sh")
 
     print("Installing more dependencies")
     conn.run("pip install click==7.1.1")
