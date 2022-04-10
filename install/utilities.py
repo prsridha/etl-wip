@@ -1,8 +1,10 @@
+from time import sleep
 import subprocess
 from argparse import ArgumentParser
 
 # need to have password sans cloudlab.pem copied to scheduler
 # sudo ssh-keygen -p -N "" -f ./cloudlab.pem
+
 
 def import_or_install(package):
     try:
@@ -10,6 +12,7 @@ def import_or_install(package):
     except ImportError:
         import pip
         pip.main(['install', package])
+
 
 def init_fabric(w):
     global s
@@ -20,7 +23,8 @@ def init_fabric(w):
 
     workers = ["node"+str(i) for i in range(1, w+1)]
     host = "node0"
-    username = subprocess.run("whoami", capture_output=True, text=True).stdout.strip("\n")
+    username = subprocess.run(
+        "whoami", capture_output=True, text=True).stdout.strip("\n")
 
     #initialize fabric
     user = username
@@ -31,20 +35,24 @@ def init_fabric(w):
 
 
 def init(w):
-    global conn
     global s
+    global conn
     global username
 
     subprocess.call(["sudo", "apt", "update"])
     subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
-    username = subprocess.run("whoami", capture_output=True, text=True).stdout.strip("\n")
-    
+    username = subprocess.run(
+        "whoami", capture_output=True, text=True).stdout.strip("\n")
+
     import_or_install("fabric2")
     import_or_install("dask[complete]")
-    subprocess.call(["bash", "/users/{}/etl-wip/install/path.sh".format(username)])
+    subprocess.call(
+        ["bash", "/users/{}/etl-wip/install/path.sh".format(username)])
 
+    sleep(5)
     init_fabric(w)
-    
+
+    s.run("whoami")
     s.run("rm -rf /users/{}/etl-wip".format(username))
     s.run("git clone https://github.com/prsridha/etl-wip.git")
 # copy cloudlab.pem to workers
@@ -54,7 +62,8 @@ def copy_pem():
     global s
     global username
 
-    result = s.put("/users/{}/cloudlab.pem".format(username), "/users/{}".format(username))
+    result = s.put("/users/{}/cloudlab.pem".format(username),
+                   "/users/{}".format(username))
     return result
 
 
@@ -64,13 +73,15 @@ def copy_module():
     global username
 
     print("Zipping cerebro")
-    conn.run("zip /users/{}/etl-wip/cerebro.zip /users/{}/etl-wip/cerebro/*".format(username, username))
+    conn.run(
+        "zip /users/{}/etl-wip/cerebro.zip /users/{}/etl-wip/cerebro/*".format(username, username))
     s.run("mkdir -p /users/{}/etl-wip/etl-wip".format(username))
     s.put("/users/{}/etl-wip/cerebro.zip".format(username),
           "/users/{}/etl-wip/cerebro.zip".format(username))
     s.put("/users/{}/etl-wip/requirements.txt".format(username),
           "/users/{}/etl-wip/requirements.txt".format(username))
-    s.put("/users/{}/etl-wip/setup.py".format(username), "/users/{}/etl-wip/setup.py".format(username))
+    s.put("/users/{}/etl-wip/setup.py".format(username),
+          "/users/{}/etl-wip/setup.py".format(username))
     print(s.run("unzip /users/{}/etl-wip/cerebro.zip".format(username)))
     print(s.run("cd /users/{}/etl-wip && python3 setup.py install --user".format(username)))
 
@@ -102,7 +113,6 @@ def install_dependencies():
 
     conn.sudo("sudo apt update")
     conn.sudo("sudo apt install -y python3-pip")
-    conn.sudo("sudo apt install -y python3-distributed")
     conn.run("pip install -r /users/{}/etl-wip/requirements.txt".format(username))
 
     print("chmod /mydata/")
@@ -119,7 +129,6 @@ def install_dependencies():
     print("Installing dependencies on workers...")
     s.sudo("sudo apt update")
     s.sudo("sudo apt install -y python3-pip")
-    s.sudo("sudo apt install -y python3-distributed")
     run("pip install -r /users/{}/etl-wip/requirements.txt".format(username))
 
     print("chmod /mydata/")
@@ -128,7 +137,8 @@ def install_dependencies():
     s.sudo("sudo apt install dtach")
 
     print("Adding bin dir to path")
-    s.put("/users/{}/etl-wip/install/path.sh".format(username), "/users/{}/".format(username))
+    s.put("/users/{}/etl-wip/install/path.sh".format(username),
+          "/users/{}/".format(username))
     s.run("bash /users/{}/path.sh".format(username))
 
     print("Installing more dependencies")
@@ -163,11 +173,14 @@ def setup_dask():
     global username
 
     from distributed.utils import get_ip
-    cmd1 = 'nohup bash -c "/users/{}/.local/bin/dask-scheduler --host=0.0.0.0"'.format(username)
-    cmd2 = 'nohup bash -c "/users/{}/.local/bin/dask-worker tcp://{}:8786"'.format(username, get_ip())
+    cmd1 = 'nohup bash -c "/users/{}/.local/bin/dask-scheduler --host=0.0.0.0"'.format(
+        username)
+    cmd2 = 'nohup bash -c "/users/{}/.local/bin/dask-worker tcp://{}:8786"'.format(
+        username, get_ip())
     runbg(conn, cmd1)
     runbg(s, cmd2)
     print("Done")
+
 
 def kill_dask():
     global s
