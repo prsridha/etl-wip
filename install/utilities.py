@@ -1,5 +1,6 @@
-from time import sleep
+import site
 import subprocess
+from importlib import reload
 from argparse import ArgumentParser
 
 # need to have password sans cloudlab.pem copied to scheduler
@@ -12,6 +13,8 @@ def import_or_install(package):
     except ImportError:
         import pip
         pip.main(['install', package])
+    finally:
+        reload(site)
 
 
 def init_fabric(w):
@@ -49,7 +52,6 @@ def init(w):
     subprocess.call(
         ["bash", "/users/{}/etl-wip/install/path.sh".format(username)])
 
-    sleep(5)
     init_fabric(w)
 
     s.run("whoami")
