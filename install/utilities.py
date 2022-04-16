@@ -85,7 +85,7 @@ def copy_module():
           "/users/{}/etl-wip/requirements.txt".format(username))
     s.put("/users/{}/etl-wip/setup.py".format(username),
           "/users/{}/etl-wip/setup.py".format(username))
-    print(s.run("unzip /users/{}/etl-wip/cerebro.zip".format(username)))
+    print(s.run("unzip -o /users/{}/etl-wip/cerebro.zip".format(username)))
     print(s.run("cd /users/{}/etl-wip && python3 setup.py install --user".format(username)))
 
 
