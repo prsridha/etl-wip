@@ -42,8 +42,15 @@ class etl:
                 Path(to_path_dir).mkdir(parents=True, exist_ok=True)
                 
                 if not os.path.isfile(to_path):
-                    params.connection.get(from_path, to_path)
-                    print("Pulled from {} to {}".format(from_path, to_path))
+                    done = False
+                    while not done:
+                        try:
+                            params.connection.get(from_path, to_path)
+                            print("Pulled from {} to {}".format(from_path, to_path))
+                            done = True
+                        except:
+                            print("Failed to pull. Trying again in 1 second(s)")
+                            time.sleep(1)
 
             elif params.download_type == constants.DOWNLOAD_FROM_URL:
                 # import urllib.request
