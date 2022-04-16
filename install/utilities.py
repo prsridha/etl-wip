@@ -1,3 +1,4 @@
+import os
 import site
 import subprocess
 from importlib import reload
@@ -151,9 +152,12 @@ def delete_coco():
     global s
     global conn
     global username
-
-    print("Deleting /mydata/coco")
-    s.run("rm -rf /mydata/coco/*")
+    
+    if os.path.isdir("/mydata/coco"):
+        print("Deleting /mydata/coco")
+        s.run("rm -rf /mydata/coco/")
+    else:
+        print("/mydata/coco not found")
 
 
 def runbg(pre, cmd, sockname="dtach"):
