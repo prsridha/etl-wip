@@ -256,21 +256,29 @@ def kill_benchmark_scripts(args):
     from fabric2 import Connection
 
     worker_pids = []
-    out = s.run("ps aux | grep logger")
+    # out = s.run("ps aux | grep logger")
     # pid = out.stdout.split()[1]
-    for idx, i in enumerate(out.values()):
-        pid = i.stdout.split()[1]
-        print(pid, idx)
-        worker_pids.append(pid)
-        temp_conn = Connection("node"+str(idx), user=user,
+    workers = ["node"+str(i) for i in range(1, args.workers+1)]
+    pem_path = "/users/{}/cloudlab.pem".format(username)
+    connect_kwargs = {"key_filename": pem_path}
+    user = username
+    for i in range(len(workers)):
+        temp_conn = Connection(workers[i], user=user,
                                connect_kwargs=connect_kwargs)
+        out = temp_conn.run("ps aux | grep logger")
+        pid = out.stdout.split()[1]
+        worker_pids.append(pid)
         temp_conn.run("kill {} || true".format(pid))
-        print("Killed script: {}".format(pid))
         temp_conn.close()
-    print(worker_pids)
+    print("killed scripts:", str(worker_pids))
 
-def delete_benchmark_scripts():
-    pass
+def delete_logs():
+    global s
+    global conn
+    global username
+    
+    user = username 
+    s.run("rm -rf /users/{}/log".format(username))
 
 def download_logs(args):
     global s
@@ -388,6 +396,9 @@ def main():
             kill_benchmark_scripts(args)
         elif args.cmd == "downloadlogs":
             download_logs(args)
+        elif args.cmd == "deletelogs":
+            delete_logs()
+
 
     conn.close()
     s.close()
