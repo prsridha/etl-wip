@@ -84,7 +84,7 @@ def kubernetes_join_workers():
     global conn
     global username
 
-    # join = conn.sudo("sudo kubeadm token create --print-join-command")
+    join = conn.sudo("sudo kubeadm token create --print-join-command")
     node0_ip = ""
     with open("/etc/hosts", "r") as f:
         for i in f.read().split("\n"):
@@ -92,7 +92,9 @@ def kubernetes_join_workers():
                 node0_ip = i.split("\t")[0]
     s.sudo("bash /users/{}/etl-wip/install/kubernetes_join.sh {}".format(username, node0_ip))
 
-    # s.sudo(join)
+    s.sudo(join.stdout)
+    sleep(5)
+    conn.run("kubectl get nodes")
 
 def main():
     init_fabric(2)
