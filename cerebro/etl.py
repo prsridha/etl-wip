@@ -48,7 +48,8 @@ class etl:
                             params.connection.get(from_path, to_path)
                             print("Pulled from {} to {}".format(from_path, to_path))
                             done = True
-                        except:
+                        except Exception as e:
+                            print("Got exeption:", e)
                             print("Failed to pull. Trying again in 1 second(s)")
                             time.sleep(1)
 
