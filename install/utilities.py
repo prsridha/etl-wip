@@ -3,7 +3,9 @@ import site
 import subprocess
 from importlib import reload
 from argparse import ArgumentParser
-
+from pathlib import Path
+import shutil
+from fabric2 import Connection
 # need to have password sans cloudlab.pem copied to scheduler
 # sudo ssh-keygen -p -N "" -f ./cloudlab.pem
 
@@ -122,6 +124,8 @@ def install_dependencies():
     conn.sudo("sudo chmod 777 -R /mydata/")
 
     conn.sudo("sudo apt install dtach")
+    conn.sudo("sudo apt install gawk")
+    conn.sudo("sudo apt-get install sysstat -y")
 
     print("Adding bin dir to path")
     conn.run("bash /users/{}/etl-wip/install/path.sh".format(username))
@@ -138,6 +142,9 @@ def install_dependencies():
     s.sudo("sudo chmod 777 -R /mydata/")
 
     s.sudo("sudo apt install dtach")
+
+    s.sudo("sudo apt install gawk")
+    s.sudo("sudo apt-get install sysstat -y")
 
     print("Adding bin dir to path")
     s.put("/users/{}/etl-wip/install/path.sh".format(username),
@@ -217,6 +224,136 @@ def kill_dask():
     print(worker_pids)
 
 
+def run_benchmark_scripts(args):
+    global s
+    global conn
+    global username
+
+    workers = ["node"+str(i) for i in range(1, args.workers+1)]
+    pem_path = "/users/{}/cloudlab.pem".format(username)
+    connect_kwargs = {"key_filename": pem_path}
+    user = username
+    for i in range(len(workers)):
+        cmd1 = 'nohup bash -c "sh /users/{}/logger_w{}.sh /users/{}/log/"'.format(username, str(i), username)
+        print(cmd1)
+        temp_conn = Connection(workers[i], user=user,
+                               connect_kwargs=connect_kwargs)
+        runbg(temp_conn, cmd1)
+        temp_conn.close()
+    
+    print("Done running benchmark scripts")
+
+
+
+def kill_benchmark_scripts(args):
+    global s
+    global conn
+    global username
+
+    user = username
+    pem_path = "/users/{}/cloudlab.pem".format(username)
+    connect_kwargs = {"key_filename": pem_path}
+    from fabric2 import Connection
+
+    worker_pids = []
+    out = s.run("ps aux | grep logger")
+    # pid = out.stdout.split()[1]
+    for idx, i in enumerate(out.values()):
+        pid = i.stdout.split()[1]
+        print(pid, idx)
+        worker_pids.append(pid)
+        temp_conn = Connection("node"+str(idx), user=user,
+                               connect_kwargs=connect_kwargs)
+        temp_conn.run("kill {} || true".format(pid))
+        print("Killed script: {}".format(pid))
+        temp_conn.close()
+    print(worker_pids)
+
+def delete_benchmark_scripts():
+    pass
+
+def download_logs(args):
+    global s
+    global conn
+    global username
+    
+    common_logs_path = "/users/{}/etl-wip/benchmark_scripts/logs/".format(username)
+    dirpath = Path(common_logs_path)
+    if dirpath.exists() and dirpath.is_dir():
+        shutil.rmtree(dirpath)
+    os.mkdir(dirpath)
+
+    workers = ["node"+str(i) for i in range(1, args.workers+1)]
+    pem_path = "/users/{}/cloudlab.pem".format(username)
+    connect_kwargs = {"key_filename": pem_path}
+    user = username
+    for i in range(len(workers)):
+        cpu_log_file_name = "/users/{}/log/cpu_util_{}.log".format(username, str(i))
+        disk_log_file_name = "/users/{}/log/disk_util_{}.log".format(username, str(i))
+        nw_log_file_name = "/users/{}/log/nw_util_{}.log".format(username, str(i))
+        temp_conn = Connection(workers[i], user=user,
+                               connect_kwargs=connect_kwargs)
+        temp_conn.get(cpu_log_file_name, common_logs_path)
+        temp_conn.get(disk_log_file_name, common_logs_path)
+        temp_conn.get(nw_log_file_name, common_logs_path)
+        temp_conn.close()
+    print("downloaded log files from workers")
+
+def create_benchmark_scripts(args):
+    global username
+    base_path="/users/{}/etl-wip/benchmark_scripts/".format(username)
+    dirpath = Path(base_path)
+    if dirpath.exists() and dirpath.is_dir():
+        shutil.rmtree(dirpath)
+    os.mkdir(dirpath)
+    flines = [
+        "#!/usr/bin/env bash\n",
+        'if [ "$1" != "" ]; then\n',
+        '\tLOG_DIR="$1"\n',
+        '\tmkdir -p $LOG_DIR\n',
+        'else\n',
+        '\tLOG_DIR="."\n',
+        'fi\n',
+        'LOG_DIR=$1\n'
+    ]
+    comp_loop = [
+        'while true;\n',
+        'do\n',
+        '\tdatestr=`date "+%Y-%m-%d %H:%M:%S"`\n',
+        '\tcpu="$[100-$(vmstat 1 2|tail -1|awk \'{print $15}\')]%"\n',
+        '\tmem=$(free | grep Mem | awk \'{print $3/$2 * 100.0 "%"}\')\n',
+        '\techo -e "${datestr}\\n${cpu},${mem}" >> $CPU_LOG_FILENAME;\n',
+        '\tdisk_log=$(iostat -dm 1 1 | sed \'1,2d\')\n',
+        '\techo -e "${datestr}\\n${disk_log}" >> $DISK_LOG_FILENAME;\n',
+        '\tmsg_control=$(sudo sar -n DEV 1 1 | grep eno1 | tail -n 1 | gawk \'{print "eno1: "$2", rxpck/s: "$3", txpck/s: "$4", rxkB/s: "$5", txkB/s: "$6", rxcmp/s: "$7", txcmp/s: "$8", rxmcst/s: "$9", %ifutil: "$10}\')\n',
+        '\techo -e "${datestr}\\n${msg_control}" >> $NW_LOG_FILENAME;\n',
+        '\tsleep 1;\n',
+        'done\n'
+    ]
+    for i in range(args.workers):
+        log_script = base_path + "logger_w" + str(i) + ".sh"
+        cpu_log_file_name = "CPU_LOG_FILENAME=$LOG_DIR/cpu_util_" + str(i) + ".log\n"
+        disk_log_file_name = "DISK_LOG_FILENAME=$LOG_DIR/disk_util_" + str(i) + ".log\n"
+        network_log_file_name = "NW_LOG_FILENAME=$LOG_DIR/nw_util_" + str(i) + ".log\n"
+        with open(log_script, "a") as ls:
+            ls.writelines(flines)
+            ls.write(cpu_log_file_name)
+            ls.write(disk_log_file_name)
+            ls.write(network_log_file_name)
+            ls.writelines(comp_loop)
+
+    workers = ["node"+str(i) for i in range(1, args.workers+1)]
+    pem_path = "/users/{}/cloudlab.pem".format(username)
+    connect_kwargs = {"key_filename": pem_path}
+    user = username
+    for i in range(len(workers)):
+        log_script = base_path + "logger_w" + str(i) + ".sh"
+        temp_conn = Connection(workers[i], user=user,
+                               connect_kwargs=connect_kwargs)
+        temp_conn.put(log_script, "/users/{}".format(user))
+        temp_conn.close()
+    print("put log files in workers")
+
 def main():
     parser = ArgumentParser()
     parser.add_argument("cmd", help="install dependencies")
@@ -243,6 +380,14 @@ def main():
             setup_dask()
         elif args.cmd == "killdask":
             kill_dask()
+        elif args.cmd == "createscripts":
+            create_benchmark_scripts(args)
+        elif args.cmd == "runbs":
+            run_benchmark_scripts(args)
+        elif args.cmd == "killbs":
+            kill_benchmark_scripts(args)
+        elif args.cmd == "downloadlogs":
+            download_logs(args)
 
     conn.close()
     s.close()
