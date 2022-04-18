@@ -1,0 +1,10 @@
+{
+    "num_of_workers":8,
+    "current_epoch": 0,
+    "num_epochs": 5,
+    "param_grid": {
+        "learning_rate": [1e-3, 1e-4],
+        "lambda_value": [1e-4, 1e-5],
+        "batch_size": [32, 64, 256, 512]
+    }
+}
