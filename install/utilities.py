@@ -31,6 +31,10 @@ class CerebroInstaller:
         workers = ["node"+str(i) for i in range(1, self.w+1)]
         host = "node0"
 
+        self.username = subprocess.run(
+            "whoami", capture_output=True, text=True).stdout.strip("\n")
+        self.root_path = self.root_path.format(self.username) 
+
         #initialize fabric
         user = self.username
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
@@ -63,8 +67,6 @@ class CerebroInstaller:
 
     def kubernetes_install(self):
         self.conn.sudo("bash {}/kubernetes_install.sh".format(self.root_path))
-
-    def kubernetes_post(self):
         self.conn.sudo("bash {}/kubernetes_post.sh {}".format(self.root_path, self.username))
 
     def kubernetes_join_workers(self):
@@ -101,9 +103,8 @@ def main():
         installer.init_fabric()
         if args.cmd == "preinstall":
             installer.kubernetes_preinstall()
-        elif args.cmd == "postinstall":
+        elif args.cmd == "install":
             installer.kubernetes_install()
-            installer.kubernetes_post()
         elif args.cmd == "joinworkers":
             installer.kubernetes_join_workers()
 

@@ -3,7 +3,7 @@
 ## post installation steps - 
 # run as non-root ->
 mkdir -p /users/$1/.kube
-sudo cp -i /etc/kubernetes/admin.conf /users/$1/.kube/config
+sudo yes | cp -rf /etc/kubernetes/admin.conf /users/$1/.kube/config
 # sudo chown $(id -u):$(id -g) /users/$1/.kube/config
 sudo chmod 777 /users/$1/.kube/config
 sudo cp /root/calico.yaml .

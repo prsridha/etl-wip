@@ -52,5 +52,5 @@ systemctl restart docker
 systemctl restart kubelet
 
 
-# echo "REBOOTING..."
-# reboot
+echo "REBOOTING..."
+reboot
