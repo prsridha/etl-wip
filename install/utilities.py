@@ -93,12 +93,31 @@ def kubernetes_join_workers():
     s.sudo("bash /users/{}/etl-wip/install/kubernetes_join.sh {}".format(username, node0_ip))
 
     s.sudo(join.stdout)
-    sleep(5)
+    time.sleep(5)
     conn.run("kubectl get nodes")
 
 def main():
-    init_fabric(2)
-    kubernetes_join_workers()
+    parser = ArgumentParser()
+    parser.add_argument("cmd", help="install dependencies")
+    parser.add_argument("-w", "--workers", dest="workers", type=int,
+                        help="number of workers")
+
+    args = parser.parse_args()
+
+    if args.cmd == "init":
+        init(args.workers)
+    else:
+        init_fabric(args.workers)
+        if args.cmd == "preinstall":
+            kubernetes_preinstall()
+        elif args.cmd == "postinstall":
+            kubernetes_install()
+            kubernetes_post()
+        elif args.cmd == "joinworkers":
+            kubernetes_join_workers()
+
+    conn.close()
+    s.close()
 
 main()
 
