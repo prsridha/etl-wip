@@ -25,10 +25,10 @@ class CerebroInstaller:
         self.conn = None
         self.username = None
 
-    def init_fabric(self, w):
+    def init_fabric(self):
         from fabric2 import ThreadingGroup, Connection
 
-        workers = ["node"+str(i) for i in range(1, w+1)]
+        workers = ["node"+str(i) for i in range(1, self.w+1)]
         host = "node0"
 
         #initialize fabric
@@ -43,14 +43,14 @@ class CerebroInstaller:
         subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
         self.username = subprocess.run(
             "whoami", capture_output=True, text=True).stdout.strip("\n")
-        self.root_path = self.root_path.format(username) 
+        self.root_path = self.root_path.format(self.username) 
 
         import_or_install("fabric2")
         import_or_install("dask[complete]")
         subprocess.call(
             ["bash", "{}/path.sh".format(self.root_path)])
 
-        self.init_fabric(w)
+        self.init_fabric()
 
         self.s.run("whoami")
         self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
