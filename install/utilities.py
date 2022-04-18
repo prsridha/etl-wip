@@ -16,87 +16,77 @@ def import_or_install(package):
     finally:
         reload(site)
 
-def init_fabric(w):
-    global s
-    global conn
-    global username
+class CerebroInstaller:
+    def __init__(self, root_path, workers):
+        self.w = workers
+        self.root_path = root_path
+        
+        self.s = None
+        self.conn = None
+        self.username = None
 
-    from fabric2 import ThreadingGroup, Connection
+    def init_fabric(self, w):
+        from fabric2 import ThreadingGroup, Connection
 
-    workers = ["node"+str(i) for i in range(1, w+1)]
-    host = "node0"
-    username = subprocess.run(
-        "whoami", capture_output=True, text=True).stdout.strip("\n")
+        workers = ["node"+str(i) for i in range(1, w+1)]
+        host = "node0"
 
-    #initialize fabric
-    user = username
-    pem_path = "/users/{}/cloudlab.pem".format(username)
-    connect_kwargs = {"key_filename": pem_path}
-    conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
-    s = ThreadingGroup(*workers, user=user, connect_kwargs=connect_kwargs)
+        #initialize fabric
+        user = self.username
+        pem_path = "/users/{}/cloudlab.pem".format(self.username)
+        connect_kwargs = {"key_filename": pem_path}
+        self.conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+        self.s = ThreadingGroup(*workers, user=user, connect_kwargs=connect_kwargs)
 
-def init(w):
-    global s
-    global conn
-    global username
+    def init(self):
+        subprocess.call(["sudo", "apt", "update"])
+        subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
+        self.username = subprocess.run(
+            "whoami", capture_output=True, text=True).stdout.strip("\n")
+        self.root_path = self.root_path.format(username) 
 
-    subprocess.call(["sudo", "apt", "update"])
-    subprocess.call(["sudo", "apt", "install", "-y", "python3-pip"])
-    username = subprocess.run(
-        "whoami", capture_output=True, text=True).stdout.strip("\n")
+        import_or_install("fabric2")
+        import_or_install("dask[complete]")
+        subprocess.call(
+            ["bash", "{}/path.sh".format(self.root_path)])
 
-    import_or_install("fabric2")
-    import_or_install("dask[complete]")
-    subprocess.call(
-        ["bash", "/users/{}/etl-wip/install/path.sh".format(username)])
+        self.init_fabric(w)
 
-    init_fabric(w)
+        self.s.run("whoami")
+        self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
+        self.s.run("git clone https://github.com/prsridha/etl-wip.git --branch kubernetes")
 
-    s.run("whoami")
-    s.run("rm -rf /users/{}/etl-wip".format(username))
-    s.run("git clone https://github.com/prsridha/etl-wip.git --branch kubernetes")
+    def kubernetes_preinstall(self):
+        # print("Note: this will reboot your machine!")
+        time.sleep(5)
+        self.conn.sudo("bash {}/kubernetes_pre.sh".format(self.root_path))
 
-def kubernetes_preinstall():
-    global s
-    global conn
-    global username
+    def kubernetes_install(self):
+        self.conn.sudo("bash {}/kubernetes_install.sh".format(self.root_path))
 
-    print("Note: this will reboot your machine!")
-    time.sleep(5)
-    conn.sudo("bash /users/{}/etl-wip/install/kubernetes_pre.sh".format(username))
+    def kubernetes_post(self):
+        self.conn.sudo("bash {}/kubernetes_post.sh {}".format(self.root_path, self.username))
 
-def kubernetes_install():
-    global s
-    global conn
-    global username
+    def kubernetes_join_workers(self):
+        join = self.conn.sudo("sudo kubeadm token create --print-join-command")
+        node0_ip = ""
+        with open("/etc/hosts", "r") as f:
+            for i in f.read().split("\n"):
+                if "node0" in i:
+                    node0_ip = i.split("\t")[0]
+        self.s.sudo("bash {}/kubernetes_join.sh {}".format(self.root_path, node0_ip))
 
-    conn.sudo("bash /users/{}/etl-wip/install/kubernetes_install.sh".format(username))
+        self.s.sudo(join.stdout)
+        time.sleep(5)
+        self.conn.run("kubectl get nodes")
 
-def kubernetes_post():
-    global s
-    global conn
-    global username
-
-    conn.sudo("bash /users/{}/etl-wip/install/kubernetes_post.sh {}".format(username, username))
-
-def kubernetes_join_workers():
-    global s
-    global conn
-    global username
-
-    join = conn.sudo("sudo kubeadm token create --print-join-command")
-    node0_ip = ""
-    with open("/etc/hosts", "r") as f:
-        for i in f.read().split("\n"):
-            if "node0" in i:
-                node0_ip = i.split("\t")[0]
-    s.sudo("bash /users/{}/etl-wip/install/kubernetes_join.sh {}".format(username, node0_ip))
-
-    s.sudo(join.stdout)
-    time.sleep(5)
-    conn.run("kubectl get nodes")
+    def close(self):
+        self.s.close()
+        self.conn.close()
 
 def main():
+    root_path = "/users/{}/etl-wip/install/init_cluster"
+
     parser = ArgumentParser()
     parser.add_argument("cmd", help="install dependencies")
     parser.add_argument("-w", "--workers", dest="workers", type=int,
@@ -104,20 +94,20 @@ def main():
 
     args = parser.parse_args()
 
+    installer = CerebroInstaller(root_path, args.workers)
     if args.cmd == "init":
-        init(args.workers)
+        installer.init()
     else:
-        init_fabric(args.workers)
+        installer.init_fabric()
         if args.cmd == "preinstall":
-            kubernetes_preinstall()
+            installer.kubernetes_preinstall()
         elif args.cmd == "postinstall":
-            kubernetes_install()
-            kubernetes_post()
+            installer.kubernetes_install()
+            installer.kubernetes_post()
         elif args.cmd == "joinworkers":
-            kubernetes_join_workers()
+            installer.kubernetes_join_workers()
 
-    conn.close()
-    s.close()
+    installer.close()
 
 main()
 
