@@ -4,8 +4,7 @@
 # run as non-root ->
 mkdir -p /users/$1/.kube
 sudo yes | cp -rf /etc/kubernetes/admin.conf /users/$1/.kube/config
-# sudo chown $(id -u):$(id -g) /users/$1/.kube/config
-sudo chmod 777 /users/$1/.kube/config
+sudo chown $(id -u $1):$(id -g $1) /users/$1/.kube/config
 sudo cp /root/calico.yaml .
 kubectl apply -f calico.yaml
 kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-

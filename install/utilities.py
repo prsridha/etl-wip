@@ -3,6 +3,7 @@ import time
 import subprocess
 from importlib import reload
 from argparse import ArgumentParser
+from kubernetes import client, config
 
 # need to have password sans cloudlab.pem copied to scheduler
 # sudo ssh-keygen -p -N "" -f ./cloudlab.pem
@@ -81,6 +82,34 @@ class CerebroInstaller:
         self.s.sudo(join.stdout)
         time.sleep(5)
         self.conn.run("kubectl get nodes")
+    
+    def install_nfs(self):
+        pass
+    
+    def install_metrics_monitor(self):
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+
+        self.conn.run("kubectl create namespace prom-metrics")
+        self.conn.run("helm repo add prometheus-community https://prometheus-community.github.io/helm-charts")
+        self.conn.run("helm repo update")
+        self.conn.run("helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack")
+
+        name = "prom-grafana"
+        ns = "prom-metrics"
+        body = v1.read_namespaced_service(namespace=ns, name=name)
+        body.spec.type = "NodePort"
+        v1.patch_namespaced_service(name, ns, body)
+
+        svc = v1.read_namespaced_service(namespace=ns, name=name)
+        port = svc.spec.ports[0].node_port
+        
+        print("Access Grafana with this link:\n http://<Cloudlab Host Name>: {}".format(port))
+        print("username{}\npassword:{}".format("admin", "prom-operator"))
+
+    def testing(self):
+        # self.conn.run("sudo chown $(id -u):$(id -g) $HOME/.kube/config")
+        self.conn.sudo("bash /users/prsridha/etl-wip/install/init_cluster/testing.sh prsridha")
 
     def close(self):
         self.s.close()
@@ -107,6 +136,12 @@ def main():
             installer.kubernetes_install()
         elif args.cmd == "joinworkers":
             installer.kubernetes_join_workers()
+        elif args.cmd == "installnfs":
+            installer.install_nfs()
+        elif args.cmd == "metricsmonitor":
+            installer.install_metrics_monitor()
+        elif args.cmd == "testing":
+            installer.testing()
 
     installer.close()
 
