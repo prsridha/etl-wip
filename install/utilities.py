@@ -1,9 +1,9 @@
+import os
 import site
 import time
 import subprocess
 from importlib import reload
 from argparse import ArgumentParser
-from kubernetes import client, config
 
 # need to have password sans cloudlab.pem copied to scheduler
 # sudo ssh-keygen -p -N "" -f ./cloudlab.pem
@@ -17,14 +17,40 @@ def import_or_install(package):
     finally:
         reload(site)
 
+def check_pod_status(label):
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    names = []
+    pods_list = v1.list_namespaced_pod(
+        namespace_, label_selector=label, watch=False)
+    for pod in pods_list.items:
+        names.append(pod.metadata.name)
+
+    if not names:
+        return False
+
+    for i in names:
+        pod = v1.read_namespaced_pod_status(i, namespace_, pretty='true')
+        status = pod.status.phase
+        if status != "Running":
+            return False
+    return True
+
 class CerebroInstaller:
-    def __init__(self, root_path, workers):
+    def __init__(self, root_path, workers, kube_params):
         self.w = workers
         self.root_path = root_path
+        
+        self.kube_namespace = kube_params["kube_namespace"]
+        self.cerebro_checkpoint_hostpath = kube_params["cerebro_checkpoint_hostpath"]
+        self.cerebro_config_hostpath = kube_params["cerebro_config_hostpath"]
+        self.cerebro_data_hostpath = kube_params["cerebro_data_hostpath"]
+        self.cerebro_worker_data_hostpath = kube_params["cerebro_worker_data_hostpath"]
         
         self.s = None
         self.conn = None
         self.username = None
+
 
     def init_fabric(self):
         from fabric2 import ThreadingGroup, Connection
@@ -53,7 +79,7 @@ class CerebroInstaller:
         import_or_install("fabric2")
         import_or_install("dask[complete]")
         subprocess.call(
-            ["bash", "{}/path.sh".format(self.root_path)])
+            ["bash", "{}/install/init_cluster/path.sh".format(self.root_path)])
 
         self.init_fabric()
 
@@ -64,12 +90,12 @@ class CerebroInstaller:
     def kubernetes_preinstall(self):
         # print("Note: this will reboot your machine!")
         time.sleep(5)
-        self.conn.sudo("bash {}/kubernetes_pre.sh".format(self.root_path))
+        self.conn.sudo("bash {}/install/init_cluster/kubernetes_pre.sh".format(self.root_path))
 
     def kubernetes_install(self):
-        self.conn.sudo("bash {}/kubernetes_install.sh".format(self.root_path))
-        self.conn.sudo("bash {}/kubernetes_post.sh {}".format(self.root_path, self.username))
-
+        self.conn.sudo("bash {}/install/init_cluster/kubernetes_install.sh".format(self.root_path))
+        self.conn.sudo("bash {}/install/init_cluster/kubernetes_post.sh {}".format(self.root_path, self.username))
+    
     def kubernetes_join_workers(self):
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
         node0_ip = ""
@@ -77,23 +103,106 @@ class CerebroInstaller:
             for i in f.read().split("\n"):
                 if "node0" in i:
                     node0_ip = i.split("\t")[0]
-        self.s.sudo("bash {}/kubernetes_join.sh {}".format(self.root_path, node0_ip))
+        self.s.sudo("bash {}/install/init_cluster/kubernetes_join.sh {}".format(self.root_path, node0_ip))
 
         self.s.sudo(join.stdout)
         time.sleep(5)
         self.conn.run("kubectl get nodes")
     
+    def init_cerebro_kube(self):
+        cmds = [
+            "kubectl create -f {}/install/other-configs/rbac_clusterroles.yaml".format(self.root_path),
+            "kubectl create namespace {}".format(self.kube_namespace),
+            "kubectl create -n {} secret generic kube-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.kube/config")),
+            "kubectl config set-context --current --namespace={}".format(
+                self.kube_namespace),
+            "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
+                self.kube_namespace, self.root_path),
+            "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
+                self.kube_namespace, self.root_path),
+        ]
+
+        for cmd in cmds:
+            self.conn.run(cmd)
+
     def install_nfs(self):
-        pass
+        self.conn.run("helm create {}/nfs-config".format(self.root_path))
+        self.conn.run( "rm -rf {}/nfs-config/templates/*".format(self.root_path))
+        self.conn.run("cp {}/install/nfs-config/* {}/nfs-config/templates/".format(self.root_path,self.root_path))
+        self.conn.run("cp {}/install/values.yaml {}/nfs-config/values.yaml".format(self.root_path,self.root_path))
+        self.conn.run("helm install --namespace={} nfs-config {}/nfs-config/".format(self.kube_namespace, self.root_path))
+
+        label = "role=nfs-server"
+
+        """
+        while not check_pod_status(label):
+            sleep(1)
+
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pods_list = v1.list_namespaced_pod(
+        namespace_, label_selector=label, watch=False)
+        nfs_podname = pods_list.items[0].metadata.name
+
+        cmds = []
+
+        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "rm -rf /exports/*"'.format(
+            nfs_podname, self.kube_namespace))
+        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
+            nfs_podname, namespace_, cerebro_checkpoint_hostpath))
+        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
+            nfs_podname, self.kube_namespace, self.cerebro_checkpoint_hostpath))
+        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
+            nfs_podname, self.kube_namespace, self.cerebro_config_hostpath))
+        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
+            nfs_podname, self.kube_namespace, self.cerebro_data_hostpath))
     
+        with open("{}/install/nfs-config/export.txt".format(self.root_path), "w") as f:
+            permissions = "*(rw,insecure,no_root_squash,no_subtree_check)"
+            s = "/exports" + "\t" + \
+                "*(rw,insecure,fsid=0,no_root_squash,no_subtree_check)" + "\n"
+            s += self.cerebro_checkpoint_hostpath + "\t" + permissions + "\n"
+            s += self.cerebro_config_hostpath + "\t" + permissions + "\n"
+            s += self.cerebro_data_hostpath + "\t" + permissions + "\n"
+            f.write(s)
+            for i in range(self.w):
+                path = self.cerebro_worker_data_hostpath.format(i)
+                cmd = 'kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
+                    nfs_podname, self.kube_namespace, path)
+                cmds.append(cmd)
+                s = path + "\t" + permissions + "\n"
+                f.write(s)
+        
+        copy_exports = "kubectl cp -n {} {}/install/nfs-config/export.txt {}:/etc/exports".format(
+        self.kube_namespace, self.root_path, nfs_podname)
+        reset_exportfs = 'kubectl exec {} -n {} -- /bin/bash -c "exportfs -a"'.format(
+        nfs_podname, self.kube_namespace)
+
+        cmds.append(copy_exports)
+        cmds.append(reset_exportfs)
+
+        for cmd in cmds:
+            self.conn.run(cmd)
+
+        """
+
     def install_metrics_monitor(self):
+        import_or_install("kubernetes")
+        from kubernetes import client, config
+
         config.load_kube_config()
         v1 = client.CoreV1Api()
 
-        self.conn.run("kubectl create namespace prom-metrics")
-        self.conn.run("helm repo add prometheus-community https://prometheus-community.github.io/helm-charts")
-        self.conn.run("helm repo update")
-        self.conn.run("helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack")
+        cmds = [
+            "kubectl create namespace prom-metrics",
+            "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
+            "helm repo update",
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack"
+        ]
+
+        for cmd in cmds:
+            self.conn.run(cmd)
 
         name = "prom-grafana"
         ns = "prom-metrics"
@@ -104,8 +213,13 @@ class CerebroInstaller:
         svc = v1.read_namespaced_service(namespace=ns, name=name)
         port = svc.spec.ports[0].node_port
         
-        print("Access Grafana with this link:\n http://<Cloudlab Host Name>: {}".format(port))
-        print("username{}\npassword:{}".format("admin", "prom-operator"))
+        print("Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}".format(port))
+        print("username: {}\npassword: {}".format("admin", "prom-operator"))
+
+        with open("{}/install/metrics_monitor_credentials.txt".format(self.root_path), "w") as f:
+            f.write("Access Grafana with this link:\nhttp://<Cloudlab Host Name>: {}\n".format(port))
+            f.write("username: {}\npassword: {}".format("admin", "prom-operator"))
+
 
     def testing(self):
         # self.conn.run("sudo chown $(id -u):$(id -g) $HOME/.kube/config")
@@ -116,8 +230,16 @@ class CerebroInstaller:
         self.conn.close()
 
 def main():
-    root_path = "/users/{}/etl-wip/install/init_cluster"
-
+    root_path = "/users/{}/etl-wip"
+    
+    kube_params = {
+    "kube_namespace": "cerebro",
+    "cerebro_checkpoint_hostpath": "/exports/cerebro-checkpoint",
+    "cerebro_config_hostpath": "/exports/cerebro-config",
+    "cerebro_data_hostpath": "/exports/cerebro-data",
+    "cerebro_worker_data_hostpath": "/exports/cerebro-data-{}"
+    }
+    
     parser = ArgumentParser()
     parser.add_argument("cmd", help="install dependencies")
     parser.add_argument("-w", "--workers", dest="workers", type=int,
@@ -125,7 +247,7 @@ def main():
 
     args = parser.parse_args()
 
-    installer = CerebroInstaller(root_path, args.workers)
+    installer = CerebroInstaller(root_path, args.workers, kube_params)
     if args.cmd == "init":
         installer.init()
     else:
@@ -136,6 +258,8 @@ def main():
             installer.kubernetes_install()
         elif args.cmd == "joinworkers":
             installer.kubernetes_join_workers()
+        elif args.cmd == "initcerebrokube":
+            installer.init_cerebro_kube()
         elif args.cmd == "installnfs":
             installer.install_nfs()
         elif args.cmd == "metricsmonitor":
