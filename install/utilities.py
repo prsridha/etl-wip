@@ -17,12 +17,14 @@ def import_or_install(package):
     finally:
         reload(site)
 
-def check_pod_status(label):
+def check_pod_status(label, namespace):
+    from kubernetes import client, config
+
     config.load_kube_config()
     v1 = client.CoreV1Api()
     names = []
     pods_list = v1.list_namespaced_pod(
-        namespace_, label_selector=label, watch=False)
+        namespace, label_selector=label, watch=False)
     for pod in pods_list.items:
         names.append(pod.metadata.name)
 
@@ -30,7 +32,7 @@ def check_pod_status(label):
         return False
 
     for i in names:
-        pod = v1.read_namespaced_pod_status(i, namespace_, pretty='true')
+        pod = v1.read_namespaced_pod_status(i, namespace, pretty='true')
         status = pod.status.phase
         if status != "Running":
             return False
@@ -95,6 +97,12 @@ class CerebroInstaller:
     def kubernetes_install(self):
         self.conn.sudo("bash {}/install/init_cluster/kubernetes_install.sh".format(self.root_path))
         self.conn.sudo("bash {}/install/init_cluster/kubernetes_post.sh {}".format(self.root_path, self.username))
+
+        # change permissios of kube config. Not working through sh script.
+        uid = self.conn.run("id -u").stdout.rstrip()
+        gid = self.conn.run("id -g").stdout.rstrip()
+        self.conn.sudo("sudo chown {}:{} /users/{}/.kube/config".format(uid, gid, self.username))
+        self.conn.sudo("sudo chown {}:{} /users/{}/.kube/".format(uid, gid, self.username))
     
     def kubernetes_join_workers(self):
         join = self.conn.sudo("sudo kubeadm token create --print-join-command")
@@ -127,37 +135,41 @@ class CerebroInstaller:
             self.conn.run(cmd)
 
     def install_nfs(self):
+
+        from kubernetes import client, config
+
         self.conn.run("helm create {}/nfs-config".format(self.root_path))
         self.conn.run( "rm -rf {}/nfs-config/templates/*".format(self.root_path))
         self.conn.run("cp {}/install/nfs-config/* {}/nfs-config/templates/".format(self.root_path,self.root_path))
         self.conn.run("cp {}/install/values.yaml {}/nfs-config/values.yaml".format(self.root_path,self.root_path))
         self.conn.run("helm install --namespace={} nfs-config {}/nfs-config/".format(self.kube_namespace, self.root_path))
-
+        
         label = "role=nfs-server"
 
-        """
-        while not check_pod_status(label):
-            sleep(1)
+        
+        while not check_pod_status(label, self.kube_namespace):
+            time.sleep(1)
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
         pods_list = v1.list_namespaced_pod(
-        namespace_, label_selector=label, watch=False)
+        self.kube_namespace, label_selector=label, watch=False)
         nfs_podname = pods_list.items[0].metadata.name
+        
 
         cmds = []
 
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "rm -rf /exports/*"'.format(
             nfs_podname, self.kube_namespace))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
-            nfs_podname, namespace_, cerebro_checkpoint_hostpath))
+            nfs_podname, self.kube_namespace, self.cerebro_checkpoint_hostpath))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
             nfs_podname, self.kube_namespace, self.cerebro_checkpoint_hostpath))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
             nfs_podname, self.kube_namespace, self.cerebro_config_hostpath))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
             nfs_podname, self.kube_namespace, self.cerebro_data_hostpath))
-    
+
         with open("{}/install/nfs-config/export.txt".format(self.root_path), "w") as f:
             permissions = "*(rw,insecure,no_root_squash,no_subtree_check)"
             s = "/exports" + "\t" + \
@@ -184,8 +196,6 @@ class CerebroInstaller:
 
         for cmd in cmds:
             self.conn.run(cmd)
-
-        """
 
     def install_metrics_monitor(self):
         import_or_install("kubernetes")
@@ -223,7 +233,10 @@ class CerebroInstaller:
 
     def testing(self):
         # self.conn.run("sudo chown $(id -u):$(id -g) $HOME/.kube/config")
-        self.conn.sudo("bash /users/prsridha/etl-wip/install/init_cluster/testing.sh prsridha")
+        uid = self.conn.run("id -u").stdout.rstrip()
+        gid = self.conn.run("id -g").stdout.rstrip()
+
+        self.conn.sudo("sudo chown {}:{} /users/{}/.kube/".format(uid, gid, self.username))
 
     def close(self):
         self.s.close()
