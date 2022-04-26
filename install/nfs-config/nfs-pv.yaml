@@ -12,5 +12,5 @@ spec:
     - ReadWriteMany
     - ReadWriteOnce
   hostPath:
-    path: /mnt/nfs
+    path: /mydata/nfs
   persistentVolumeReclaimPolicy: Recycle

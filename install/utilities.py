@@ -138,12 +138,18 @@ class CerebroInstaller:
 
         from kubernetes import client, config
 
-        self.conn.run("helm create {}/nfs-config".format(self.root_path))
-        self.conn.run( "rm -rf {}/nfs-config/templates/*".format(self.root_path))
-        self.conn.run("cp {}/install/nfs-config/* {}/nfs-config/templates/".format(self.root_path,self.root_path))
-        self.conn.run("cp {}/install/values.yaml {}/nfs-config/values.yaml".format(self.root_path,self.root_path))
-        self.conn.run("helm install --namespace={} nfs-config {}/nfs-config/".format(self.kube_namespace, self.root_path))
+        cmds = []
         
+        cmds.append("helm create {}/nfs-config".format(self.root_path))
+        cmds.append("rm -rf {}/nfs-config/templates/*".format(self.root_path))
+        cmds.append("cp {}/install/nfs-config/* {}/nfs-config/templates/".format(self.root_path,self.root_path))
+        cmds.append("cp {}/install/values.yaml {}/nfs-config/values.yaml".format(self.root_path,self.root_path))
+        cmds.append("helm install --namespace={} nfs-config {}/nfs-config/".format(self.kube_namespace, self.root_path))
+        
+        for cmd in cmds:
+            time.sleep(1)
+            self.conn.run(cmd)
+
         label = "role=nfs-server"
 
         
@@ -161,8 +167,6 @@ class CerebroInstaller:
 
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "rm -rf /exports/*"'.format(
             nfs_podname, self.kube_namespace))
-        cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
-            nfs_podname, self.kube_namespace, self.cerebro_checkpoint_hostpath))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
             nfs_podname, self.kube_namespace, self.cerebro_checkpoint_hostpath))
         cmds.append('kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(

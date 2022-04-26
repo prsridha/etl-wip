@@ -1,6 +1,6 @@
 namespace: cerebro
 nfs:
-  capacity: 370Gi
+  capacity: 50Gi
   ip: node0
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage

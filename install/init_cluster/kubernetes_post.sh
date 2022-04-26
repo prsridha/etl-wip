@@ -57,6 +57,7 @@ kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
 ## increase space of node
 # sudo /usr/local/etc/emulab/mkextrafs.pl /mnt
 sudo apt install nfs-kernel-server
+sudo chmod -R 777 /mydata
 
 ## install helm
 curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
