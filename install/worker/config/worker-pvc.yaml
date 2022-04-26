@@ -1,0 +1,17 @@
+# Worker Persistent Volume Claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cerebro-data-pvc-worker-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    type: cerebro-worker
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.worker.dataCapacity }}
+  selector: 
+    matchLabels:
+      worker-id: "worker-{{ .Values.workerID }}"

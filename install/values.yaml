@@ -27,3 +27,11 @@ worker:
   port: 6000
   workerContainerPort: 5000
   workerImage: prsridha/poc-worker:latest
+worker:
+  checkpointMountPath: /data/cerebro_checkpoint_storage
+  dataCapacity: 10Gi
+  dataMountPath: /data/cerebro_data_storage_worker
+  hyperparameterMountPath: /data/hyperparameter_properties
+  port: 6000
+  workerContainerPort: 5000
+  workerImage: prsridha/cerebro-worker:latest

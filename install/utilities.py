@@ -287,6 +287,24 @@ class CerebroInstaller:
         user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(users_port, kube_port, self.username)
         print("Run this command on your local machine to access Jupyter Notebook : {}\nJUPYTER_TOKEN: {}".format(user_pf_command, jupyter_token))
 
+    def install_worker(self):
+        from kubernetes import client, config
+
+        cmds = [
+            "helm create {}/cerebro-worker".format(self.root_path),
+            "rm -rf {}/cerebro-worker/templates/*".format(self.root_path),
+            "cp {}/install/worker/config/* {}/cerebro-worker/templates/".format(self.root_path, self.root_path),
+            "cp {}/install/values.yaml {}/cerebro-worker/values.yaml".format(self.root_path, self.root_path),
+        ]
+        c = "helm install --namespace={n} worker{id} {path}/cerebro-worker --set workerID={id}"
+
+        for i in range(self.w):
+            cmds.append(c.format(id=i, path=self.root_path, n=self.kube_namespace))
+
+        for cmd in cmds:
+            time.sleep(0.5)
+            self.conn.run(cmd)
+
 
     def testing(self):
         from kubernetes import client, config
@@ -344,6 +362,8 @@ def main():
             installer.init_cerebro_kube()
         elif args.cmd == "installcontroller":
             installer.install_controller()
+        elif args.cmd == "installworker":
+            installer.install_worker()
         elif args.cmd == "testing":
             installer.testing()
 

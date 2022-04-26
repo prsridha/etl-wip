@@ -1,0 +1,44 @@
+# Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cerebro-worker-{{ .Values.workerID }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: cerebro-worker-{{ .Values.workerID }}
+      type: cerebro-worker
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cerebro-worker-{{.Values.workerID}}
+        type: cerebro-worker
+    spec:
+      containers:
+      - name: cerebro-worker-{{ .Values.workerID }}-container
+        image: {{ .Values.worker.workerImage }}
+        imagePullPolicy: Always
+        env:
+        - name: WORKER_ID_SELF
+          value: "{{ .Values.workerID }}"
+        volumeMounts:
+        - name: cerebro-hyperparamter-storage
+          mountPath: {{ .Values.worker.hyperparameterMountPath }}
+        - name: cerbro-data-storage-worker-{{ .Values.workerID }}
+          mountPath: {{ .Values.worker.dataMountPath }}
+        - name: cerebro-checkpoint-storage
+          mountPath: {{ .Values.worker.checkpointMountPath }}
+        ports:
+        - containerPort: {{ .Values.worker.workerContainerPort }}
+      volumes:
+      - name: cerebro-hyperparamter-storage
+        configMap:
+          name: hyperparameter-properties
+      - name: cerbro-data-storage-worker-{{ .Values.workerID }}
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc-worker-{{ .Values.workerID }}
+      - name: cerebro-checkpoint-storage
+        persistentVolumeClaim:
+          claimName: cerebro-checkpoint-pvc
