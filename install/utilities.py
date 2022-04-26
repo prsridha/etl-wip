@@ -1,6 +1,7 @@
 import os
 import site
 import time
+import yaml
 import subprocess
 from importlib import reload
 from argparse import ArgumentParser
@@ -200,6 +201,14 @@ class CerebroInstaller:
 
         for cmd in cmds:
             self.conn.run(cmd)
+
+        service = v1.read_namespaced_service('nfs-server-service', self.kube_namespace)
+        nfs_ip = service.spec.cluster_ip
+        with open('{}/install/values.yaml'.format(self.root_path), 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
+        values_yaml["nfs"]["ip"] = nfs_ip
+        with open('{}/install/values.yaml'.format(self.root_path), 'w') as yamlfile:
+            yaml.safe_dump(values_yaml, yamlfile)
 
     def install_metrics_monitor(self):
         import_or_install("kubernetes")
