@@ -9,6 +9,8 @@ from argparse import ArgumentParser
 # need to have password sans cloudlab.pem copied to scheduler
 # sudo ssh-keygen -p -N "" -f ./cloudlab.pem
 
+#TODO: add namespace param to all kubectl commands
+
 def import_or_install(package):
     try:
         __import__(package)
@@ -305,6 +307,31 @@ class CerebroInstaller:
             time.sleep(0.5)
             self.conn.run(cmd)
 
+    def run_dask(self):
+        from kubernetes import client, config
+
+        label = "app=cerebro-controller"
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pods_list = v1.list_namespaced_pod(self.kube_namespace, label_selector=label, watch=False)
+        controller = pods_list.items[0].metadata.name
+
+        label = "type=cerebro-worker"
+        pods_list = v1.list_namespaced_pod(self.kube_namespace, label_selector=label, watch=False)
+        workers = pods_list.items
+
+        scheduler_cmd = "kubectl exec -it {} -- dask-scheduler --host=0.0.0.0 &".format(controller)
+        out = self.runbg(scheduler_cmd)
+
+        svc_name = "cerebro-controller-service"
+        svc = v1.read_namespaced_service(namespace=self.kube_namespace, name=svc_name)
+        controller_ip = svc.spec.cluster_ip
+
+        worker_cmd = "kubectl exec -it {} tcp://{}:8786 &"
+        for worker in workers:
+            self.runbg(worker_cmd.format(worker.metadata.name, controller_ip))
+
+        print("cerebro-controller's IP: ", controller_ip)
 
     def testing(self):
         from kubernetes import client, config
@@ -324,6 +351,7 @@ class CerebroInstaller:
 
         user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(users_port, kube_port, self.username)
         print("Run this command on your local machine to access Jupyter Notebook : {}\nJUPYTER_TOKEN: {}".format(user_pf_command, jupyter_token))
+
 
     def close(self):
         self.s.close()
@@ -362,8 +390,10 @@ def main():
             installer.init_cerebro_kube()
         elif args.cmd == "installcontroller":
             installer.install_controller()
-        elif args.cmd == "installworker":
+        elif args.cmd == "installworkers":
             installer.install_worker()
+        elif args.cmd == "rundask":
+            installer.run_dask()
         elif args.cmd == "testing":
             installer.testing()
 

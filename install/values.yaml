@@ -5,13 +5,13 @@ controller:
   configCapacity: 100Mi
   configHostPath: /cerebro-config
   configMountPath: /data/cerebro_config_storage
-  containerPort: 5000
+  containerPort: 8786
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-controller:latest
-  port: 6000
+  port: 8786
   propertiesMountPath: /data/cerebro_properties
 namespace: cerebro
 nfs:
@@ -21,17 +21,9 @@ worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   dataCapacity: 10Gi
   dataMountPath: /data/cerebro_data_storage_worker
-  executorContainerPort: 7000
-  executorImage: prsridha/poc-executor:latest
   hyperparameterMountPath: /data/hyperparameter_properties
-  port: 6000
-  workerContainerPort: 5000
-  workerImage: prsridha/poc-worker:latest
-worker:
-  checkpointMountPath: /data/cerebro_checkpoint_storage
-  dataCapacity: 10Gi
-  dataMountPath: /data/cerebro_data_storage_worker
-  hyperparameterMountPath: /data/hyperparameter_properties
-  port: 6000
-  workerContainerPort: 5000
+  port: 8787
+  workerContainerPort: 8787
   workerImage: prsridha/cerebro-worker:latest
+  controllerDataHostPath: /cerebro-data
+  controllerDataMountPath: /data/cerebro_data_storage

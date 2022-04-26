@@ -30,6 +30,8 @@ spec:
           mountPath: {{ .Values.worker.dataMountPath }}
         - name: cerebro-checkpoint-storage
           mountPath: {{ .Values.worker.checkpointMountPath }}
+        - name: cerebro-controller-storage
+          mountPath: {{ .Values.worker.controllerDataMountPath }}
         ports:
         - containerPort: {{ .Values.worker.workerContainerPort }}
       volumes:
@@ -42,3 +44,6 @@ spec:
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc
+      - name: cerebro-controller-storage
+        persistentVolumeClaim:
+          claimName: cerebro-data-pvc
