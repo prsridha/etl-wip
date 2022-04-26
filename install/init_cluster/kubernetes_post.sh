@@ -68,7 +68,7 @@ sudo apt-get -y install jq
 sudo apt -y install python3-pip
 pip install kubernetes
 sudo apt-get install apt-transport-https --yes
-
+sudo apt-get install dtach
 
 ## ONLY FOR OPENSTACK
 # dpkg -l 'linux-*' | sed '/^ii/!d;/'"$(uname -r | sed "s/\(.*\)-\([^0-9]\+\)/\1/")"'/d;s/^[^ ]* [^ ]* \([^ ]*\).*/\1/;/[0-9]/!d' | xargs sudo apt-get -y purge

@@ -54,6 +54,8 @@ class CerebroInstaller:
         self.conn = None
         self.username = None
 
+    def runbg(self, cmd, sockname="dtach"):
+        return self.conn.run('dtach -n `mktemp -u /tmp/%s.XXXX` %s' % (sockname, cmd))
 
     def init_fabric(self):
         from fabric2 import ThreadingGroup, Connection
@@ -117,23 +119,6 @@ class CerebroInstaller:
         self.s.sudo(join.stdout)
         time.sleep(5)
         self.conn.run("kubectl get nodes")
-    
-    def init_cerebro_kube(self):
-        cmds = [
-            "kubectl create -f {}/install/other-configs/rbac_clusterroles.yaml".format(self.root_path),
-            "kubectl create namespace {}".format(self.kube_namespace),
-            "kubectl create -n {} secret generic kube-config --from-file={}".format(
-                self.kube_namespace, os.path.expanduser("~/.kube/config")),
-            "kubectl config set-context --current --namespace={}".format(
-                self.kube_namespace),
-            "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
-                self.kube_namespace, self.root_path),
-            "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
-                self.kube_namespace, self.root_path),
-        ]
-
-        for cmd in cmds:
-            self.conn.run(cmd)
 
     def install_nfs(self):
 
@@ -152,7 +137,6 @@ class CerebroInstaller:
             self.conn.run(cmd)
 
         label = "role=nfs-server"
-
         
         while not check_pod_status(label, self.kube_namespace):
             time.sleep(1)
@@ -244,12 +228,84 @@ class CerebroInstaller:
             f.write("username: {}\npassword: {}".format("admin", "prom-operator"))
 
 
-    def testing(self):
-        # self.conn.run("sudo chown $(id -u):$(id -g) $HOME/.kube/config")
-        uid = self.conn.run("id -u").stdout.rstrip()
-        gid = self.conn.run("id -g").stdout.rstrip()
+    def init_cerebro_kube(self):
+        cmds = [
+            "kubectl create -f {}/install/other-configs/rbac_clusterroles.yaml".format(self.root_path),
+            "kubectl create namespace {}".format(self.kube_namespace),
+            "kubectl create -n {} secret generic kube-config --from-file={}".format(
+                self.kube_namespace, os.path.expanduser("~/.kube/config")),
+            "kubectl config set-context --current --namespace={}".format(
+                self.kube_namespace),
+            "kubectl create -n {} configmap cerebro-properties --from-file={}/properties/cerebro-properties.json".format(
+                self.kube_namespace, self.root_path),
+            "kubectl create -n {} configmap hyperparameter-properties --from-file={}/properties/hyperparameter-properties.json".format(
+                self.kube_namespace, self.root_path),
+        ]
 
-        self.conn.sudo("sudo chown {}:{} /users/{}/.kube/".format(uid, gid, self.username))
+        for cmd in cmds:
+            self.conn.run(cmd)
+
+        # install nfs server
+        self.install_nfs()
+        # install prometheus + grafana
+        self.install_metrics_monitor()
+
+    def install_controller(self):
+        from kubernetes import client, config
+
+        cmds = [
+            "helm create {}/cerebro-controller".format(self.root_path),
+            "rm -rf {}/cerebro-controller/templates/*".format(self.root_path),
+            "cp {}/install/controller/config/* {}/cerebro-controller/templates/".format(self.root_path, self.root_path),
+            "cp {}/install/values.yaml {}/cerebro-controller/values.yaml".format(self.root_path, self.root_path),
+            "helm install --namespace=cerebro controller {}/cerebro-controller/".format(self.root_path)
+        ]
+
+        for cmd in cmds:
+            time.sleep(1)
+            self.conn.run(cmd)
+
+        label = "app=cerebro-controller"
+        
+        while not check_pod_status(label, self.kube_namespace):
+            time.sleep(1)
+
+        users_port = 9999
+        kube_port = 23456
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pods_list = v1.list_namespaced_pod(
+        self.kube_namespace, label_selector=label, watch=False)
+        controller = pods_list.items[0].metadata.name
+        
+        cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
+        jupyter_token = self.conn.run(cmd).stdout
+        
+        cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(controller, kube_port)
+        out = self.runbg(cmd)
+        user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(users_port, kube_port, self.username)
+        print("Run this command on your local machine to access Jupyter Notebook : {}\nJUPYTER_TOKEN: {}".format(user_pf_command, jupyter_token))
+
+
+    def testing(self):
+        from kubernetes import client, config
+
+        users_port = 9999
+        kube_port = 23456
+        label = "app=cerebro-controller"
+        
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        pods_list = v1.list_namespaced_pod(
+        self.kube_namespace, label_selector=label, watch=False)
+        controller = pods_list.items[0].metadata.name
+        
+        cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
+        jupyter_token = self.conn.run(cmd).stdout
+
+        user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(users_port, kube_port, self.username)
+        print("Run this command on your local machine to access Jupyter Notebook : {}\nJUPYTER_TOKEN: {}".format(user_pf_command, jupyter_token))
 
     def close(self):
         self.s.close()
@@ -286,10 +342,8 @@ def main():
             installer.kubernetes_join_workers()
         elif args.cmd == "initcerebrokube":
             installer.init_cerebro_kube()
-        elif args.cmd == "installnfs":
-            installer.install_nfs()
-        elif args.cmd == "metricsmonitor":
-            installer.install_metrics_monitor()
+        elif args.cmd == "installcontroller":
+            installer.install_controller()
         elif args.cmd == "testing":
             installer.testing()
 
