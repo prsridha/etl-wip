@@ -2,6 +2,7 @@ import os
 import time
 import pandas as pd
 from pathlib import Path
+from invoke import run as local
 import cerebro.constants as constants
 import dask.dataframe as dd
 from dask.distributed import Client
@@ -42,7 +43,8 @@ class etl:
                 Path(to_path_dir).mkdir(parents=True, exist_ok=True)
                 
                 if not os.path.isfile(to_path):
-                    params.connection.get(from_path, to_path)
+                    # params.connection.get(from_path, to_path)
+                    local("cp {} {}".format(from_path, to_path))
                     print("Pulled from {} to {}".format(from_path, to_path))
 
             elif params.download_type == constants.DOWNLOAD_FROM_URL:
