@@ -315,6 +315,7 @@ class CerebroInstaller:
         v1 = client.CoreV1Api()
         pods_list = v1.list_namespaced_pod(self.kube_namespace, label_selector=label, watch=False)
         controller = pods_list.items[0].metadata.name
+        print(controller)
 
         label = "type=cerebro-worker"
         pods_list = v1.list_namespaced_pod(self.kube_namespace, label_selector=label, watch=False)
@@ -327,30 +328,18 @@ class CerebroInstaller:
         svc = v1.read_namespaced_service(namespace=self.kube_namespace, name=svc_name)
         controller_ip = svc.spec.cluster_ip
 
-        worker_cmd = "kubectl exec -it {} tcp://{}:8786 &"
+        print(controller_ip)
+        worker_cmd = "kubectl exec -it {} dask-worker tcp://{}:8786 &"
         for worker in workers:
             self.runbg(worker_cmd.format(worker.metadata.name, controller_ip))
 
         print("cerebro-controller's IP: ", controller_ip)
 
+    def download_coco(self):
+        pass
+
     def testing(self):
-        from kubernetes import client, config
-
-        users_port = 9999
-        kube_port = 23456
-        label = "app=cerebro-controller"
-        
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        pods_list = v1.list_namespaced_pod(
-        self.kube_namespace, label_selector=label, watch=False)
-        controller = pods_list.items[0].metadata.name
-        
-        cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
-        jupyter_token = self.conn.run(cmd).stdout
-
-        user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(users_port, kube_port, self.username)
-        print("Run this command on your local machine to access Jupyter Notebook : {}\nJUPYTER_TOKEN: {}".format(user_pf_command, jupyter_token))
+        self.install_nfs()
 
 
     def close(self):

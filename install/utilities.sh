@@ -8,7 +8,7 @@ dask-worker tcp://<>:8786
 
 
 
-cd /data/cerebro-data-storage
+cd /data/cerebro_data_storage
 wget http://images.cocodataset.org/zips/val2014.zip
 wget http://images.cocodataset.org/annotations/annotations_trainval2014.zip
 mkdir coco
