@@ -362,6 +362,9 @@ class CerebroInstaller:
         controller = pods[0]
         workers = pods[1:]
 
+        for pod in pods:
+            self.conn.run("kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
+
         scheduler_cmd = "kubectl exec -it {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
         out = self.runbg(scheduler_cmd)
