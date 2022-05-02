@@ -14,7 +14,6 @@ class etl:
         self.params = params
         self.dataset_info = dataset_info
         self.row_routine = row_preprocessing_routine
-        self.params.create_connection()
         self.io_time = 0
         self.cpu_time = 0
 
