@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+cerebro-controller
+cerebro-worker
+nfs-config
