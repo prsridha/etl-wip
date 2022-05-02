@@ -131,3 +131,4 @@ dmypy.json
 cerebro-controller
 cerebro-worker
 nfs-config
+cerebro.zip

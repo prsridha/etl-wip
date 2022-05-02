@@ -1,0 +1,9 @@
+dask[complete]
+jupyter-server-proxy
+notebook
+pandas
+fabric
+spacy
+Pillow
+sentence_transformers
+matplotlib
