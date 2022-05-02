@@ -16,4 +16,6 @@ RUN python3 setup.py install --user
 
 # RUN JUPYTER_TOKEN=$(openssl rand -hex 16) && echo $JUPYTER_TOKEN > JUPYTER_TOKEN
 # CMD ["jupyter", "notebook", "--NotebookApp.token=$JUPYTER_TOKEN", "--NotebookApp.password=$JUPYTER_TOKEN", "--ip=0.0.0.0", "--allow-root", "--no-browser"]
-CMD ["/bin/bash", "run_jupyter.sh"]
+# CMD ["/bin/bash", "run_jupyter.sh"]
+
+ENTRYPOINT ["tail", "-f", "/dev/null"]

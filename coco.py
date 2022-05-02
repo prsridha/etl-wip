@@ -12,9 +12,10 @@ from cerebro.etl import etl
 import cerebro.constants as constants
 from sentence_transformers import SentenceTransformer, util
 
+
 def prepare_data():
     data = None
-    with open("/mydata/coco/annotations/captions_val2014.json") as f:
+    with open("/data/cerebro_data_storage/coco/annotations/captions_val2014.json") as f:
         data = json.load(f)
     dataset = {
         'id': [],
@@ -22,7 +23,7 @@ def prepare_data():
         'height': [],
         'width': [],
         'captions': [],
-        'date_captured': [] 
+        'date_captured': []
     }
 
     annotations = {}
@@ -41,7 +42,9 @@ def prepare_data():
         dataset['date_captured'].append(data["images"][i]['date_captured'])
 
     dataset = pd.DataFrame(dataset)
-    dataset.to_csv("/mydata/coco/annotations/captions_val2014_modified.csv", index=False)
+    dataset.to_csv(
+        "/data/cerebro_data_storage/coco/annotations/captions_val2014_modified.csv", index=False)
+
 
 def row_preprocessing_routine(row, to_root_path, kwargs):
     from torchvision import transforms
@@ -53,31 +56,34 @@ def row_preprocessing_routine(row, to_root_path, kwargs):
     caption_tensor = enc_model.encode([output_caption], convert_to_tensor=True)
     return [img_tensor, caption_tensor]
 
+
 def main():
     dsk_bknd = DaskBackend("0.0.0.0:8786")
 
     prepare_data()
     is_feature_download = [False, True, False, False, False, False]
-    feature_names = ["id", "file_name", "height", "width", "captions", "date_captured"]
+    feature_names = ["id", "file_name", "height",
+                     "width", "captions", "date_captured"]
     dtypes = (int, str, int, int, list, str)
-    data_info = DatasetInfo(feature_names, feature_names, [], dtypes, is_feature_download)
+    data_info = DatasetInfo(feature_names, feature_names,
+                            [], dtypes, is_feature_download)
 
-    metadata_path = "/mydata/coco/annotations/captions_val2014_modified.csv"
-    from_root_path = "/mydata/coco/images/val2014/"
-    to_root_path = "/mydata/coco/val2014/"
+    metadata_path = "/data/cerebro_data_storage/coco/annotations/captions_val2014_modified.csv"
+    from_root_path = "/data/cerebro_data_storage/coco/images/val2014/"
+    to_root_path = "/data/cerebro_data_storage_worker/coco/val2014/"
     output_path = ""
     requirements_path = ""
     download_type = constants.DOWNLOAD_FROM_SERVER
-    username = "vik1497"
-    host = "128.110.218.13"
-    pem_path = "/users/vik1497/cloudlab.pem"
+
+#     username = "vik1497"
+#     host = "128.110.218.13"
+#     pem_path = "/users/vik1497/cloudlab.pem"
 
     nlp_model = SentenceTransformer('all-MiniLM-L6-v2')
 
     params = Params(metadata_path, from_root_path, to_root_path,
-        output_path, requirements_path, username, host, pem_path,
-        download_type)
-    
+                    output_path, requirements_path, download_type)
+
     e = etl(dsk_bknd, params, row_preprocessing_routine, data_info)
 
     e.load_data(frac=0.1)
@@ -87,10 +93,11 @@ def main():
     result = e.preprocess_data(nlp_model=nlp_model)
     print(result.compute())
 
-def testing():
-    prepare_data()
-    df = pd.read_csv("/mydata/coco/annotations/captions_val2014_modified.csv")
-    df.head()
+# def testing():
+#     prepare_data()
+#     df = pd.read_csv("/mydata/coco/annotations/captions_val2014_modified.csv")
+#     df.head()
+
 
 if __name__ == '__main__':
     main()
