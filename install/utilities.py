@@ -453,7 +453,8 @@ class CerebroInstaller:
         self.conn.run("rm {}/cerebro.zip".format(self.root_path))
 
     def download_coco(self):
-        pass
+        pods = get_pod_names(self.kube_namespace)
+        self.conn.run("kubectl exec -it {} -- /bin/bash ./install/utilities.sh".format(pods[0]))
 
     def testing(self):
         self.install_nfs()
@@ -512,6 +513,8 @@ def main():
             installer.port_forward_jupyter()
         elif args.cmd == "testing":
             installer.testing()
+        elif args.cmd == "downloadcoco":
+            installer.download_coco()
 
     installer.close()
 
