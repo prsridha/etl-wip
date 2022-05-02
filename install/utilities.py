@@ -459,6 +459,11 @@ class CerebroInstaller:
 
         self.conn.run("rm {}/cerebro.zip".format(self.root_path))
 
+        self.stop_dask()
+        self.run_dask()
+        self.stop_jupyter()
+        self.start_jupyter()
+
     def download_coco(self):
         pods = get_pod_names(self.kube_namespace)
         self.conn.run("kubectl exec -it {} -- /bin/bash ./install/utilities.sh".format(pods[0]))
