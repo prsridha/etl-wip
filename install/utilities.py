@@ -392,6 +392,7 @@ class CerebroInstaller:
         out = self.conn.run(
             "kubectl exec -t {} -- ps -ef | grep jupyter-notebook".format(controller))
         notebook_pid = out.stdout.split()[1]
+        print(notebook_pid)
         self.conn.run(
             "kubectl exec -t {} -- kill {} || true".format(controller, notebook_pid))
         print("Killed Jupyter Notebook: {}".format(notebook_pid))
@@ -402,7 +403,7 @@ class CerebroInstaller:
         pods = get_pod_names(self.kube_namespace)
         controller = pods[0]
 
-        self.conn.run("run_jupypter.sh")
+        self.runbg("kubectl exec -it {} -- /bin/bash run_jupyter.sh".format(controller))
 
     def stop_dask(self):
         from kubernetes import client, config
