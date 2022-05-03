@@ -149,6 +149,21 @@ class CerebroInstaller:
 
         self.s.sudo(join.stdout)
         time.sleep(5)
+
+        # add new label to nodes
+        from kubernetes import client, config
+
+        config.load_kube_config()
+        v1 = client.CoreV1Api()
+        node_list = v1.list_node()
+
+        for n in node_list.items:
+            body = n
+            name = body.metadata.labels["kubernetes.io/hostname"].split(".")[0]
+            body.metadata.labels["cerebro/nodename"] = name
+
+            v1.patch_node(body.metadata.name, body)
+
         self.conn.run("kubectl get nodes")
 
     def install_nfs(self):
@@ -470,7 +485,7 @@ class CerebroInstaller:
 
     def testing(self):
         self.install_nfs()
-
+        
     def close(self):
         self.s.close()
         self.conn.close()
@@ -489,7 +504,7 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument("cmd", help="install dependencies")
-    parser.add_argument("-w", "--workers", dest="workers", type=int,
+    parser.add_argument("-w", "--workers", dest="workers", type=int, required=True,
                         help="number of workers")
 
     args = parser.parse_args()
@@ -504,7 +519,7 @@ def main():
         elif args.cmd == "install":
             installer.kubernetes_install()
         elif args.cmd == "joinworkers":
-            installer.kubernetes_join_workers()
+            installer.kubernetes_join_workers() 
         elif args.cmd == "initcerebrokube":
             installer.init_cerebro_kube()
         elif args.cmd == "installcontroller":
@@ -515,6 +530,9 @@ def main():
             installer.run_dask()
         elif args.cmd == "startjupyter":
             installer.start_jupyter()
+        elif args.cmd == "downloadcoco":
+            installer.download_coco()
+        
         elif args.cmd == "copymodule":
             installer.copy_module()
         elif args.cmd == "stopdask":
@@ -525,8 +543,8 @@ def main():
             installer.port_forward_jupyter()
         elif args.cmd == "testing":
             installer.testing()
-        elif args.cmd == "downloadcoco":
-            installer.download_coco()
+        else:
+            print("Wrong option")
 
     installer.close()
 

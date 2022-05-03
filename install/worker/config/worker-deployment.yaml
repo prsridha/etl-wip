@@ -16,6 +16,15 @@ spec:
         app: cerebro-worker-{{.Values.workerID}}
         type: cerebro-worker
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node{{ .Values.workerID }}
       containers:
       - name: cerebro-worker-{{ .Values.workerID }}-container
         image: {{ .Values.worker.workerImage }}

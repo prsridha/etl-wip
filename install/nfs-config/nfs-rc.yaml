@@ -12,6 +12,15 @@ spec:
       labels:
         role: nfs-server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node0
       containers:
       - name: nfs-server
         image: k8s.gcr.io/volume-nfs:0.8

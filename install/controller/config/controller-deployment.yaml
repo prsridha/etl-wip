@@ -16,6 +16,15 @@ spec:
         app: cerebro-controller
         type: cerebro-controller
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cerebro/nodename
+                operator: In
+                values:
+                - node0
       containers:
       - name: cerebro-controller-container
         image: {{ .Values.controller.image }}
