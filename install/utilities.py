@@ -412,7 +412,7 @@ class CerebroInstaller:
         print(notebook_pid)
         self.conn.run(
             "kubectl exec -t {} -- kill -9 {} || true".format(controller, notebook_pid))
-        
+
         print("Killed Jupyter Notebook: {}".format(notebook_pid))
 
     def start_jupyter(self):
@@ -487,7 +487,7 @@ class CerebroInstaller:
 
     def testing(self):
         self.install_nfs()
-        
+
     def close(self):
         self.s.close()
         self.conn.close()
@@ -521,7 +521,7 @@ def main():
         elif args.cmd == "install":
             installer.kubernetes_install()
         elif args.cmd == "joinworkers":
-            installer.kubernetes_join_workers() 
+            installer.kubernetes_join_workers()
         elif args.cmd == "initcerebrokube":
             installer.init_cerebro_kube()
         elif args.cmd == "installcontroller":
@@ -530,11 +530,11 @@ def main():
             installer.install_worker()
         elif args.cmd == "rundask":
             installer.run_dask()
-        elif args.cmd == "startjupyter":
-            installer.start_jupyter()
         elif args.cmd == "downloadcoco":
             installer.download_coco()
-        
+
+        elif args.cmd == "startjupyter":
+            installer.start_jupyter()
         elif args.cmd == "copymodule":
             installer.copy_module()
         elif args.cmd == "stopdask":
@@ -561,6 +561,6 @@ main()
 # bind -f  ~/.inputrc
 
 # source <(kubectl completion bash)
-# echo "source <(kubectl completion bash)" >> ~/.bashrc 
+# echo "source <(kubectl completion bash)" >> ~/.bashrc
 # alias k=kubectl
 # complete -F __start_kubectl k
