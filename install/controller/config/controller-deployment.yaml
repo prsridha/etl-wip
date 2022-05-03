@@ -24,7 +24,7 @@ spec:
               - key: cerebro/nodename
                 operator: In
                 values:
-                - node0
+                - node1
       containers:
       - name: cerebro-controller-container
         image: {{ .Values.controller.image }}

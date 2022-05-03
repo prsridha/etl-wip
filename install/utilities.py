@@ -83,7 +83,7 @@ class CerebroInstaller:
     def init_fabric(self):
         from fabric2 import ThreadingGroup, Connection
 
-        workers = ["node"+str(i) for i in range(1, self.w+1)]
+        nodes = ["node"+str(i) for i in range(1, self.w)]
         host = "node0"
 
         self.username = subprocess.run(
@@ -95,7 +95,7 @@ class CerebroInstaller:
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
         self.conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
-        self.s = ThreadingGroup(*workers, user=user,
+        self.s = ThreadingGroup(*nodes, user=user,
                                 connect_kwargs=connect_kwargs)
 
     def init(self):
@@ -215,7 +215,7 @@ class CerebroInstaller:
             s += self.cerebro_config_hostpath + "\t" + permissions + "\n"
             s += self.cerebro_data_hostpath + "\t" + permissions + "\n"
             f.write(s)
-            for i in range(self.w):
+            for i in range(1, self.w - 1):
                 path = self.cerebro_worker_data_hostpath.format(i)
                 cmd = 'kubectl exec {} -n {} -- /bin/bash -c "mkdir {}"'.format(
                     nfs_podname, self.kube_namespace, path)
@@ -364,7 +364,10 @@ class CerebroInstaller:
         ]
         c = "helm install --namespace={n} worker{id} {path}/cerebro-worker --set workerID={id}"
 
-        for i in range(1, self.w + 1):
+        # node0 for nfs + metrics
+        # node1 for controller
+        # all other nodes for workers
+        for i in range(1, self.w - 1):
             cmds.append(
                 c.format(id=i, path=self.root_path, n=self.kube_namespace))
 

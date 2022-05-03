@@ -24,7 +24,7 @@ spec:
               - key: cerebro/nodename
                 operator: In
                 values:
-                - node{{ .Values.workerID }}
+                - node{{ add .Values.workerID 1}}
       containers:
       - name: cerebro-worker-{{ .Values.workerID }}-container
         image: {{ .Values.worker.workerImage }}
