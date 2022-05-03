@@ -250,11 +250,13 @@ class CerebroInstaller:
         config.load_kube_config()
         v1 = client.CoreV1Api()
 
+        node = "node0"
+
         cmds = [
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
             "helm repo update",
-            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack"
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(node)
         ]
 
         for cmd in cmds:
@@ -362,7 +364,7 @@ class CerebroInstaller:
         ]
         c = "helm install --namespace={n} worker{id} {path}/cerebro-worker --set workerID={id}"
 
-        for i in range(self.w):
+        for i in range(1, self.w + 1):
             cmds.append(
                 c.format(id=i, path=self.root_path, n=self.kube_namespace))
 
