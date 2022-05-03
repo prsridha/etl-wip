@@ -11,7 +11,7 @@ migrate_a2b (){
 space_saver (){
     ori_dir=$1
     new_dir=$2
-    dir_b="${MNT_ROOT}/$new_dir"
+    dir_b="/mnt/$new_dir"
     dir_a="$ori_dir"
     migrate_a2b $dir_a $dir_b
 
