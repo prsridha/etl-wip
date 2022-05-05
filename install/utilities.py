@@ -485,8 +485,7 @@ class CerebroInstaller:
         self.start_jupyter()
 
     def download_coco(self):
-        pods = get_pod_names(self.kube_namespace)
-        self.conn.run("kubectl exec -it {} -- /bin/bash ./install/utilities.sh".format(pods[0]))
+        self.conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
 
     def testing(self):
         self.install_nfs()
