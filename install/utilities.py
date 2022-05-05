@@ -115,7 +115,7 @@ class CerebroInstaller:
         self.s.run("whoami")
         self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
         self.s.run(
-            "git clone https://github.com/prsridha/etl-wip.git --branch kubernetes")
+            "git clone https://github.com/prsridha/etl-wip.git -b kubernetes")
 
     def kubernetes_preinstall(self):
         # print("Note: this will reboot your machine!")
@@ -485,7 +485,26 @@ class CerebroInstaller:
         self.start_jupyter()
 
     def download_coco(self):
-        self.conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
+        host = "node1"
+
+        user = self.username
+        pem_path = "/users/{}/cloudlab.pem".format(self.username)
+        connect_kwargs = {"key_filename": pem_path}
+        conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+        
+        conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
+
+    def delete_worker_data(self):
+        host = "node1"
+        
+        user = self.username
+        pem_path = "/users/{}/cloudlab.pem".format(self.username)
+        connect_kwargs = {"key_filename": pem_path}
+        conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+        conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
+
+        for i in range(1, self.w - 1):
+            conn.sudo("rm -rf /mydata/nfs/cerebro-data-{}/*".format(i))
 
     def testing(self):
         self.install_nfs()
@@ -545,6 +564,8 @@ def main():
             installer.stop_jupyter()
         elif args.cmd == "portforward":
             installer.port_forward_jupyter()
+        elif args.cmd == "delworkerdata":
+            installer.delete_worker_data()
         elif args.cmd == "testing":
             installer.testing()
         else:
