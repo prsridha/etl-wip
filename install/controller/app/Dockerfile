@@ -8,7 +8,7 @@ RUN apt-get install -y nano
 # RUN chmod 700 get_helm.sh
 # RUN ./get_helm.sh
 
-RUN git clone https://github.com/prsridha/etl-wip.git
+RUN git clone https://github.com/prsridha/etl-wip.git -b kubernetes
 WORKDIR etl-wip
 ADD ./run_jupyter.sh .
 RUN pip install -r requirements.txt

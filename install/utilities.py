@@ -317,9 +317,11 @@ class CerebroInstaller:
         out = self.runbg(cmd)
         user_pf_command = "ssh -N -L {}:localhost:{} {}@<CloudLab host name>".format(
             users_port, kube_port, self.username)
-        print("Run this command on your local machine to access Jupyter Notebook : \n{}".format(
-            user_pf_command))
-        print("http://localhost:{}/?token={}".format(users_port, jupyter_token))
+        s = "Run this command on your local machine to access Jupyter Notebook : \n{}".format(
+            user_pf_command) + "\n" + "http://localhost:{}/?token={}".format(users_port, jupyter_token)
+        print(s)
+        with open("{}/install/jupyter_command.txt".format(self.root_path), "w") as f:
+            f.write(s)
 
     def install_controller(self):
         from kubernetes import client, config
@@ -485,6 +487,8 @@ class CerebroInstaller:
         self.start_jupyter()
 
     def download_coco(self):
+        from fabric2 import ThreadingGroup, Connection
+
         host = "node1"
 
         user = self.username
@@ -492,7 +496,7 @@ class CerebroInstaller:
         connect_kwargs = {"key_filename": pem_path}
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
         
-        conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
+        conn.sudo("/bin/bash {}/install/utilities.sh".format(self.root_path))
 
     def delete_worker_data(self):
         host = "node1"
@@ -507,7 +511,8 @@ class CerebroInstaller:
             conn.sudo("rm -rf /mydata/nfs/cerebro-data-{}/*".format(i))
 
     def testing(self):
-        self.install_nfs()
+        self.s.run(
+            "rm -rf etl-wip")
 
     def close(self):
         self.s.close()
