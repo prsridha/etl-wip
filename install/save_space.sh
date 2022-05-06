@@ -17,6 +17,11 @@ space_saver (){
 
 }
 
+################## create more space
+sudo /usr/local/etc/emulab/mkextrafs.pl /mnt
+
+##################
+
 space_saver "/home" "home"
 space_saver "/tmp" "tmp"
 sudo chmod 1777 /tmp
