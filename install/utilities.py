@@ -499,13 +499,14 @@ class CerebroInstaller:
         conn.sudo("/bin/bash {}/install/utilities.sh".format(self.root_path))
 
     def delete_worker_data(self):
+        from fabric2 import ThreadingGroup, Connection
+        
         host = "node1"
         
         user = self.username
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
-        conn.run("/bin/bash {}/install/utilities.sh".format(self.root_path))
 
         for i in range(1, self.w - 1):
             conn.sudo("rm -rf /mydata/nfs/cerebro-data-{}/*".format(i))
