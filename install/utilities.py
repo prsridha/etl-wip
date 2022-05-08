@@ -112,6 +112,11 @@ class CerebroInstaller:
 
         self.init_fabric()
 
+        self.s.run("whoami")
+        self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
+        self.s.run(
+            "git clone https://github.com/prsridha/etl-wip.git -b kubernetes")
+        
         # create /mnt and run save space using the cloudlab command
         self.conn.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
         self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
@@ -123,10 +128,6 @@ class CerebroInstaller:
             "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
         input("save space 2 done! Hit Enter to continue")
 
-        self.s.run("whoami")
-        self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
-        self.s.run(
-            "git clone https://github.com/prsridha/etl-wip.git -b kubernetes")
 
     def kubernetes_preinstall(self):
         # print("Note: this will reboot your machine!")
