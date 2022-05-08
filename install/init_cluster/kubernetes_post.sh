@@ -56,7 +56,7 @@ kubectl taint nodes $(hostname) node-role.kubernetes.io/master:NoSchedule-
 ## increase space of node
 # sudo /usr/local/etc/emulab/mkextrafs.pl /mnt
 sudo apt install nfs-kernel-server
-sudo chmod -R 777 /mydata
+sudo chmod -R 777 /mnt
 sudo chmod 666 /var/run/docker.sock
 
 ## install helm

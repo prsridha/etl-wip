@@ -120,13 +120,13 @@ class CerebroInstaller:
         # create /mnt and run save space using the cloudlab command
         self.conn.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
         self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
-        input("save space 1 done! Hit Enter to continue")
+        # input("save space 1 done! Hit Enter to continue")
 
         self.conn.sudo(
             "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
         self.s.sudo(
             "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
-        input("save space 2 done! Hit Enter to continue")
+        # input("save space 2 done! Hit Enter to continue")
 
 
     def kubernetes_preinstall(self):
@@ -513,8 +513,8 @@ class CerebroInstaller:
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
         cmds = [
-            # "wget -P /mnt/nfs1/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
-            # "wget -P /mnt/nfs1/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/zips/val2014.zip",
+            "wget -P /mnt/nfs/cerebro-data/ http://images.cocodataset.org/annotations/annotations_trainval2014.zip",
             "mkdir /mnt/nfs/cerebro-data/coco",
             "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/annotations_trainval2014.zip",
             "unzip -d /mnt/nfs/cerebro-data/coco/ /mnt/nfs/cerebro-data/val2014.zip"
