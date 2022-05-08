@@ -35,7 +35,7 @@ spec:
         volumeMounts:
         - name: cerebro-hyperparamter-storage
           mountPath: {{ .Values.worker.hyperparameterMountPath }}
-        - name: cerbro-data-storage-worker-{{ .Values.workerID }}
+        - name: cerebro-data-storage-worker
           mountPath: {{ .Values.worker.dataMountPath }}
         - name: cerebro-checkpoint-storage
           mountPath: {{ .Values.worker.checkpointMountPath }}
@@ -47,9 +47,10 @@ spec:
       - name: cerebro-hyperparamter-storage
         configMap:
           name: hyperparameter-properties
-      - name: cerbro-data-storage-worker-{{ .Values.workerID }}
-        persistentVolumeClaim:
-          claimName: cerebro-data-pvc-worker-{{ .Values.workerID }}
+      - name: cerebro-data-storage-worker
+        hostPath:
+          path: /mnt/cerebro_data_storage_worker
+          type: DirectoryOrCreate
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc

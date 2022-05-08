@@ -1,3 +1,7 @@
+################## create more space
+# sudo /usr/local/etc/emulab/mkextrafs.pl /mnt
+##################
+
 migrate_a2b (){
     dir_a="$1"
     dir_b="$2"
@@ -16,11 +20,6 @@ space_saver (){
     migrate_a2b $dir_a $dir_b
 
 }
-
-################## create more space
-sudo /usr/local/etc/emulab/mkextrafs.pl /mnt
-
-##################
 
 space_saver "/home" "home"
 space_saver "/tmp" "tmp"

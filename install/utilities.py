@@ -112,6 +112,17 @@ class CerebroInstaller:
 
         self.init_fabric()
 
+        # create /mnt and run save space using the cloudlab command
+        self.conn.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
+        self.s.sudo("sudo /usr/local/etc/emulab/mkextrafs.pl /mnt")
+        input("save space 1 done! Hit Enter to continue")
+
+        self.conn.sudo(
+            "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
+        self.s.sudo(
+            "sudo /bin/bash {}/install/save_space.sh".format(self.root_path))
+        input("save space 2 done! Hit Enter to continue")
+
         self.s.run("whoami")
         self.s.run("rm -rf /users/{}/etl-wip".format(self.username))
         self.s.run(
@@ -256,7 +267,8 @@ class CerebroInstaller:
             "kubectl create namespace prom-metrics",
             "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
             "helm repo update",
-            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(node)
+            "helm install --namespace=prom-metrics prom prometheus-community/kube-prometheus-stack --set nodeSelector.'cerebro/nodename'={}".format(
+                node)
         ]
 
         for cmd in cmds:
@@ -385,7 +397,8 @@ class CerebroInstaller:
         workers = pods[1:]
 
         for pod in pods:
-            self.conn.run("kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
+            self.conn.run(
+                "kubectl exec -t {} -- pip install --upgrade click==8.0.2".format(pod))
 
         scheduler_cmd = "kubectl exec -it {} -- dask-scheduler --host=0.0.0.0 &".format(
             controller)
@@ -426,9 +439,11 @@ class CerebroInstaller:
         pods = get_pod_names(self.kube_namespace)
         controller = pods[0]
 
-        self.runbg("kubectl exec -i {} -- /bin/bash run_jupyter.sh".format(controller))
+        self.runbg(
+            "kubectl exec -i {} -- /bin/bash run_jupyter.sh".format(controller))
         self.port_forward_jupyter()
-        self.conn.run("kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller))
+        self.conn.run(
+            "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller))
 
     def stop_dask(self):
         from kubernetes import client, config
@@ -495,21 +510,26 @@ class CerebroInstaller:
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
         conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
-        
+
         conn.sudo("/bin/bash {}/install/utilities.sh".format(self.root_path))
 
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
-        
+
         host = "node1"
-        
+
         user = self.username
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
-        conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
 
         for i in range(1, self.w - 1):
-            conn.sudo("rm -rf /mydata/nfs/cerebro-data-{}/*".format(i))
+            host = "node" + str(i)
+            conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
+            try:
+                conn.sudo("rm -rf /mnt/cerebro_data_storage_worker/*")
+                conn.close()
+            except:
+                print("Failed to delete in worker" + str(i))
 
     def testing(self):
         self.s.run(
