@@ -528,13 +528,11 @@ class CerebroInstaller:
     def delete_worker_data(self):
         from fabric2 import ThreadingGroup, Connection
 
-        host = "node1"
-
         user = self.username
         pem_path = "/users/{}/cloudlab.pem".format(self.username)
         connect_kwargs = {"key_filename": pem_path}
 
-        for i in range(1, self.w - 1):
+        for i in range(2, self.w):
             host = "node" + str(i)
             conn = Connection(host, user=user, connect_kwargs=connect_kwargs)
             try:
