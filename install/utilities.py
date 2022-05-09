@@ -452,21 +452,28 @@ class CerebroInstaller:
         pods = get_pod_names(self.kube_namespace)
         controller = pods[0]
         workers = pods[1:]
-
-        out = self.conn.run(
-            "kubectl exec -t {} -- ps -ef | grep dask-scheduler".format(controller))
-        scheduler_pid = out.stdout.split()[1]
-        self.conn.run(
-            "kubectl exec -t {} -- kill {} || true".format(controller, scheduler_pid))
-        print("Killed Dask Scheduler: {}".format(scheduler_pid))
+        
+        try: 
+            out = self.conn.run(
+                "kubectl exec -t {} -- ps -ef | grep dask-scheduler".format(controller))
+            scheduler_pid = out.stdout.split()[1]
+            self.conn.run(
+                "kubectl exec -t {} -- kill {} || true".format(controller, scheduler_pid))
+            print("Killed Dask Scheduler: {}".format(scheduler_pid))
+        except Exception as e:
+            print("Couldn't kill dask in controller: ", str(e))
 
         for worker in workers:
-            out = self.conn.run(
-                "kubectl exec -t {} -- ps -ef | grep dask-worker".format(worker))
-            worker_pid = out.stdout.split()[1]
-            self.conn.run(
-                "kubectl exec -t {} -- kill {} || true".format(controller, worker_pid))
-            print("Killed Dask in Worker: {}".format(worker_pid))
+            try:
+                out = self.conn.run(
+                    "kubectl exec -t {} -- ps -ef | grep dask-worker".format(worker))
+                worker_pid = out.stdout.split()[1]
+                self.conn.run(
+                    "kubectl exec -t {} -- kill {} || true".format(controller, worker_pid))
+                print("Killed Dask in Worker: {}".format(worker_pid))
+            except Exception as e:
+                print("Couldn't kill dask in {}: {}".format(worker, str(e)))
+
 
     def copy_module(self):
         from kubernetes import client, config
