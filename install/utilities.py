@@ -546,7 +546,7 @@ class CerebroInstaller:
                 conn.sudo("rm -rf /mnt/cerebro_data_storage_worker/*")
                 conn.close()
             except:
-                print("Failed to delete in worker" + str(i))
+                print("Failed to delete in worker" + str(i-1))
 
     def testing(self):
         self.s.run(
