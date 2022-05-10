@@ -413,7 +413,7 @@ class CerebroInstaller:
         controller_ip = svc.spec.cluster_ip
 
         print(controller_ip)
-        worker_cmd = "kubectl exec -it {} dask-worker tcp://{}:8786 &"
+        worker_cmd = "kubectl exec -it {} -- dask-worker tcp://{}:8786 --nprocs 16 &"
         for worker in workers:
             self.runbg(worker_cmd.format(worker, controller_ip))
 
