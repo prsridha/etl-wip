@@ -8,11 +8,11 @@ RUN apt-get install -y nano
 # RUN chmod 700 get_helm.sh
 # RUN ./get_helm.sh
 
-RUN git clone https://github.com/prsridha/etl-wip.git -b kubernetes
+RUN if [ -d "etl-wip" ]; then git clone https://github.com/prsridha/etl-wip.git -b kubernetes ; fi 
 WORKDIR etl-wip
 ADD ./run_jupyter.sh .
 RUN pip install -r requirements.txt
-RUN python3 setup.py install --user 
+RUN python3 setup.py install --user
 
 # RUN JUPYTER_TOKEN=$(openssl rand -hex 16) && echo $JUPYTER_TOKEN > JUPYTER_TOKEN
 # CMD ["jupyter", "notebook", "--NotebookApp.token=$JUPYTER_TOKEN", "--NotebookApp.password=$JUPYTER_TOKEN", "--ip=0.0.0.0", "--allow-root", "--no-browser"]

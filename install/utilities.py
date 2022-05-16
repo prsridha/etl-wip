@@ -338,6 +338,12 @@ class CerebroInstaller:
 
     def install_controller(self):
         from kubernetes import client, config
+        
+        with open('{}/install/values.yaml'.format(self.root_path), 'r') as yamlfile:
+            values_yaml = yaml.safe_load(yamlfile)
+        values_yaml["controller"]["homeHostPath"] = self.root_path
+        with open('{}/install/values.yaml'.format(self.root_path), 'w') as yamlfile:
+            yaml.safe_dump(values_yaml, yamlfile)
 
         cmds = [
             "helm create {}/cerebro-controller".format(self.root_path),

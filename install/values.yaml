@@ -1,4 +1,7 @@
 controller:
+  homeCapacity: 5Gi
+  homeMountPath: /etl-wip
+  homeHostPath: ""
   checkpointCapacity: 5Gi
   checkpointHostPath: /cerebro-checkpoint
   checkpointMountPath: /data/cerebro_checkpoint_storage
@@ -16,7 +19,7 @@ controller:
 namespace: cerebro
 nfs:
   capacity: 50Gi
-  ip: 10.108.236.73
+  ip: 10.98.157.5
 worker:
   checkpointMountPath: /data/cerebro_checkpoint_storage
   controllerDataHostPath: /cerebro-data
