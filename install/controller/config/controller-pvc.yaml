@@ -5,7 +5,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: cerebro-checkpoint-pvc
+  name: cerebro-home-pvc
 spec:
   accessModes:
     - ReadWriteOnce
@@ -16,7 +16,7 @@ spec:
   selector: 
     matchLabels:
       name: cerebro-home-pv
-
+---
 # Checkpoint pvc
 apiVersion: v1
 kind: PersistentVolumeClaim

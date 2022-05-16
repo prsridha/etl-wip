@@ -1,7 +1,4 @@
 controller:
-  homeCapacity: 5Gi
-  homeMountPath: /etl-wip
-  homeHostPath: ""
   checkpointCapacity: 5Gi
   checkpointHostPath: /cerebro-checkpoint
   checkpointMountPath: /data/cerebro_checkpoint_storage
@@ -12,6 +9,9 @@ controller:
   dataCapacity: 50Gi
   dataHostPath: /cerebro-data
   dataMountPath: /data/cerebro_data_storage
+  homeCapacity: 5Gi
+  homeHostPath: /users/prsridha/etl-wip
+  homeMountPath: /etl-wip
   hyperparameterMountPath: /data/hyperparameter_properties
   image: prsridha/cerebro-controller:latest
   port: 8786

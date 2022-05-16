@@ -54,9 +54,9 @@ spec:
         ports:
         - containerPort: {{ .Values.controller.containerPort }}
       volumes:
-      -name: home
+      - name: home
         persistentVolumeClaim:
-          claimName: home-pvc
+          claimName: cerebro-home-pvc
       - name: cerebro-checkpoint-storage
         persistentVolumeClaim:
           claimName: cerebro-checkpoint-pvc

@@ -322,7 +322,7 @@ class CerebroInstaller:
         kube_port = 23456
 
         controller = get_pod_names(self.kube_namespace)[0]
-        cmd = "kubectl exec -i {} -- cat JUPYTER_TOKEN".format(controller)
+        cmd = "kubectl exec -i {} -- cat /etl-wip/install/JUPYTER_TOKEN".format(controller)
         jupyter_token = self.conn.run(cmd).stdout
 
         cmd = "kubectl port-forward --address 127.0.0.1 {} {}:8888 &".format(
@@ -367,7 +367,7 @@ class CerebroInstaller:
 
         controller = get_pod_names(self.kube_namespace)[0]
         self.runbg(
-            "kubectl exec -t {} -- /bin/bash run_jupyter.sh".format(controller))
+            "kubectl exec -t {} -- /bin/bash /etl-wip/install/controller/app/run_jupyter.sh".format(controller))
 
         self.port_forward_jupyter()
         print("Done")
